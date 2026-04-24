@@ -1,0 +1,12 @@
+customtkinter
+CTkMessagebox
+selenium
+webdriver-manager
+pandas
+openpyxl
+pywin32
+pydantic>=2.6
+google-auth-oauthlib>=1.2
+google-auth-httplib2>=0.2
+google-api-python-client>=2.120
+pytest>=8.0

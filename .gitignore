@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+
+# PyInstaller
+*.spec.bak
+
+# Credentials / tokens
+password.bin
+password.txt
+token.bin
+client_secrets.json
+*.pem
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# App data / local tooling
+.omx/
+
+.worktrees

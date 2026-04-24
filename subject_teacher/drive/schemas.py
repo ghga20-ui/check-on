@@ -1,0 +1,118 @@
+"""Pydantic schemas for files stored in Google Drive appDataFolder."""
+from __future__ import annotations
+
+import re
+from enum import Enum
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
+
+import regions
+
+SCHEMA_VERSION = 1
+
+_CLASS_KEY_RE = re.compile(r"^\d+-\d+$")
+_MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+
+
+class _Base(BaseModel):
+    """Base model with camelCase aliases and forgiving extra fields."""
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+
+class Semester(_Base):
+    year: int = Field(ge=2024, le=2100)
+    term: Literal[1, 2]
+
+
+class Settings(_Base):
+    schema_version: int = Field(default=SCHEMA_VERSION)
+    teacher_name: str
+    school_name: str
+    region: str
+    semester: Semester
+    close_by_default: bool = False
+    updated_at: str
+
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, value: str) -> str:
+        if value not in regions.REGIONS:
+            raise ValueError(f"unknown region: {value}")
+        return value
+
+
+class TimetableSlot(_Base):
+    id: str
+    day_of_week: Annotated[int, Field(ge=1, le=5)]
+    period: Annotated[int, Field(ge=1, le=7)]
+    grade: Annotated[int, Field(ge=1, le=3)]
+    class_no: Annotated[int, Field(ge=1, le=20)]
+    subject_name: str
+    neis_subject_label: str
+
+
+class Timetable(_Base):
+    schema_version: int = Field(default=SCHEMA_VERSION)
+    effective_from: str
+    slots: list[TimetableSlot]
+
+
+class StudentEntry(_Base):
+    number: Annotated[int, Field(ge=1, le=99)]
+    name: str
+
+
+class Students(_Base):
+    schema_version: int = Field(default=SCHEMA_VERSION)
+    classes: dict[str, list[StudentEntry]]
+
+    @field_validator("classes")
+    @classmethod
+    def validate_classes(cls, value: dict[str, list[StudentEntry]]) -> dict[str, list[StudentEntry]]:
+        for key in value:
+            if not _CLASS_KEY_RE.match(key):
+                raise ValueError(f"class key must match 'grade-classNo', got {key!r}")
+        return value
+
+
+class MarkType(str, Enum):
+    ABSENT = "absent"
+    EXCUSED = "excused"
+
+
+class Absence(_Base):
+    student_number: Annotated[int, Field(ge=1, le=99)]
+    mark_type: MarkType
+    note: str = ""
+
+
+class SlotAttendance(_Base):
+    absences: list[Absence]
+    checked_at: str
+    source: Literal["mobile", "pc"] = "mobile"
+    synced_to_neis: bool = False
+    closed_on_neis: bool = False
+
+
+class DayAttendance(_Base):
+    """Placeholder model kept for import compatibility in early plan steps."""
+
+
+class MonthlyAttendance(_Base):
+    schema_version: int = Field(default=SCHEMA_VERSION)
+    month: str
+    records: dict[str, dict[str, SlotAttendance]]
+
+    @field_validator("month")
+    @classmethod
+    def validate_month(cls, value: str) -> str:
+        if not _MONTH_RE.match(value):
+            raise ValueError(f"month must be 'YYYY-MM', got {value!r}")
+        return value
