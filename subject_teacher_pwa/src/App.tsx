@@ -41,8 +41,12 @@ interface AppProps {
   rosters?: RostersByClass;
   /** Attendance already on Drive, keyed by date then slot id. */
   initialAttendance?: AttendanceByDate;
+  /** Month (YYYY-MM) already in initialAttendance, so it is not refetched. */
+  initialMonth?: string;
   /** Called after each local save to persist to Drive. Omit for demo mode. */
   onSaveSlot?: SaveSlotHandler;
+  /** Loads another month's attendance when the user navigates across months. */
+  onLoadMonth?: (month: string) => Promise<AttendanceByDate>;
 }
 
 function toLocalIsoDate(date = new Date()): string {
@@ -94,7 +98,9 @@ export default function App({
   slots = sampleSlots,
   rosters = sampleRosters,
   initialAttendance,
+  initialMonth,
   onSaveSlot,
+  onLoadMonth,
 }: AppProps = {}) {
   const [page, setPage] = useState<"lessons" | "sync" | "settings">("lessons");
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -237,6 +243,30 @@ export default function App({
     window.addEventListener("online", handler);
     return () => window.removeEventListener("online", handler);
   }, []);
+
+  // Drive splits attendance into monthly files; we preload only the current
+  // month. When the teacher navigates to a date in another month, fetch that
+  // month and merge it in (local entries win so an in-flight save isn't lost).
+  const loadedMonthsRef = useRef(new Set<string>(initialMonth ? [initialMonth] : []));
+  useEffect(() => {
+    if (!onLoadMonth) return;
+    const month = selectedDate.slice(0, 7);
+    if (loadedMonthsRef.current.has(month)) return;
+    loadedMonthsRef.current.add(month);
+    onLoadMonth(month)
+      .then((records) => {
+        setAttendanceByDate((current) => {
+          const next = { ...current };
+          for (const [date, slots] of Object.entries(records)) {
+            next[date] = { ...slots, ...(next[date] ?? {}) };
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        loadedMonthsRef.current.delete(month);
+      });
+  }, [selectedDate, onLoadMonth]);
 
   const saveLesson = () => {
     if (!selectedSlot) return;

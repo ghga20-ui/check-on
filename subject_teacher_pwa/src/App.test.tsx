@@ -85,6 +85,33 @@ describe("mobile app", () => {
     expect(screen.getByText("NEIS 반영 여부는 PC 실행 결과를 읽기 전용으로 표시합니다.")).toBeInTheDocument();
   });
 
+  it("loads another month's attendance when navigating across months", async () => {
+    const user = userEvent.setup();
+    const onLoadMonth = vi.fn().mockResolvedValue({
+      "2026-04-06": {
+        "mon-3": {
+          absences: [{ studentNumber: 3, markType: "absent", note: "" }],
+          checkedAt: "2026-04-06T10:55:00+09:00",
+          source: "mobile",
+          syncedToNeis: false,
+          closedOnNeis: false,
+        },
+      },
+    });
+    render(<App initialDate="2026-05-04" initialMonth="2026-05" onLoadMonth={onLoadMonth} />);
+
+    // Same-month navigation must not trigger a fetch.
+    await user.click(screen.getByRole("button", { name: /날짜 선택/ }));
+    const dateInput = screen.getByLabelText("직접 날짜 선택");
+    await user.clear(dateInput);
+    await user.type(dateInput, "2026-04-06");
+    await user.click(screen.getByRole("button", { name: "닫기" }));
+
+    await waitFor(() => expect(onLoadMonth).toHaveBeenCalledWith("2026-04"));
+    // The loaded April record now renders for the selected April date.
+    await waitFor(() => expect(screen.getByText("결과 1명")).toBeInTheDocument());
+  });
+
   it("marks a save as Drive 완료 when onSaveSlot resolves", async () => {
     const user = userEvent.setup();
     const onSaveSlot = vi.fn().mockResolvedValue(undefined);

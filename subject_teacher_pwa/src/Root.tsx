@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import App from "./App";
 import Login from "./Login";
 import { initAuth, isConfigured, requestAccessToken } from "./lib/auth";
-import { loadAll, saveSlotAttendance, type LoadedDriveData } from "./lib/driveData";
+import {
+  loadAll,
+  loadMonthlyAttendance,
+  saveSlotAttendance,
+  type LoadedDriveData,
+} from "./lib/driveData";
 import type { StudentEntry, TimetableSlot } from "./lib/schemas";
 
 type Phase = "init" | "signedOut" | "loading" | "ready" | "error";
@@ -71,9 +76,11 @@ export default function Root() {
         slots={toSlots(data)}
         rosters={toRosters(data)}
         initialAttendance={toAttendanceByDate(data)}
+        initialMonth={today.slice(0, 7)}
         onSaveSlot={(date, slotId, payload) =>
           saveSlotAttendance(date.slice(0, 7), date, slotId, payload)
         }
+        onLoadMonth={async (month) => (await loadMonthlyAttendance(month))?.records ?? {}}
       />
     );
   }
