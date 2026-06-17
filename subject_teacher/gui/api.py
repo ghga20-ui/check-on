@@ -236,14 +236,15 @@ def _week_start(date_str: str) -> datetime:
 
 
 def _neis_mode_today_slots(
-    store,
     settings,
     date_str: str,
+    monthly,
     *,
     school_cache: dict | None = None,
     max_workers: int = 6,
 ) -> list[dict[str, object]]:
-    monthly = store.load_monthly(date_str[:7])
+    # `monthly` is supplied (and cached) by the caller; this function does no
+    # Drive I/O so it is safe to call from the per-class thread pool below.
     day_records = monthly.records.get(date_str, {}) if monthly else {}
     api_key = load_local_neis_api_key()
 
@@ -324,6 +325,10 @@ class Api:
         # Shared NEIS school-code cache so repeated/parallel timetable lookups
         # resolve schoolInfo at most once per (region, school, key).
         self._school_cache: dict[tuple[str, str, str], object] = {}
+        # Short-lived cache of the monthly attendance file, keyed by "YYYY-MM".
+        # A Drive read costs ~1.3s, and the same month is re-read on every date
+        # change and five times per week publish; this collapses those.
+        self._monthly_cache: dict[str, tuple[float, object]] = {}
 
     def __getattribute__(self, name: str):
         attr = object.__getattribute__(self, name)
@@ -346,10 +351,23 @@ class Api:
     def _clear_slot_cache(self, date_str: str | None = None) -> None:
         if date_str is None:
             self._slot_cache.clear()
+            self._monthly_cache.clear()
             return
         for key in list(self._slot_cache):
             if key[0] == date_str:
                 self._slot_cache.pop(key, None)
+        # Saving attendance changes the month file — drop its cached copy so the
+        # next read reflects the write.
+        self._monthly_cache.pop(date_str[:7], None)
+
+    def _load_monthly_cached(self, store, month: str):
+        now = time.monotonic()
+        cached = self._monthly_cache.get(month)
+        if cached and now - cached[0] < SLOT_CACHE_TTL_SECONDS:
+            return cached[1]
+        monthly = store.load_monthly(month)
+        self._monthly_cache[month] = (now, monthly)
+        return monthly
 
     def _cached_neis_mode_today_slots(self, store, settings, date_str: str) -> list[dict[str, object]]:
         assigned_signature = tuple(
@@ -367,7 +385,8 @@ class Api:
         cached = self._slot_cache.get(cache_key)
         if cached and now - cached[0] < SLOT_CACHE_TTL_SECONDS:
             return [dict(item) for item in cached[1]]
-        rows = _neis_mode_today_slots(store, settings, date_str, school_cache=self._school_cache)
+        monthly = self._load_monthly_cached(store, date_str[:7])
+        rows = _neis_mode_today_slots(settings, date_str, monthly, school_cache=self._school_cache)
         self._slot_cache[cache_key] = (now, [dict(item) for item in rows])
         return rows
 

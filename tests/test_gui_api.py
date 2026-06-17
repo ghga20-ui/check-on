@@ -461,6 +461,40 @@ def test_publish_neis_timetable_accesses_drive_store_one_day_at_a_time(monkeypat
     assert concurrency["max"] == 1
 
 
+def test_publish_reuses_cached_monthly_across_weekdays(monkeypatch):
+    # The five weekdays share a month, so the Drive month file is read once.
+    store = FakeStore()
+    store.settings = store.settings.model_copy(
+        update={
+            "timetable_mode": "neis",
+            "assigned_lessons": [
+                {"grade": 2, "class_no": "1", "subject_name": "문학", "neis_subject_label": "문학", "subject_aliases": []}
+            ],
+        }
+    )
+    store.save_timetable = lambda timetable: None
+
+    calls = {"n": 0}
+    base_load_monthly = store.load_monthly
+
+    def counting_load_monthly(month):
+        calls["n"] += 1
+        return base_load_monthly(month)
+
+    store.load_monthly = counting_load_monthly
+    monkeypatch.setattr(gui_api, "build_store", lambda: store)
+    monkeypatch.setattr(gui_api, "load_local_neis_api_key", lambda: "KEY")
+    monkeypatch.setattr(
+        gui_api,
+        "query_class_timetable",
+        lambda **kwargs: {"school": {"name": "수원고등학교"}, "date": kwargs["date_str"], "lessons": []},
+    )
+
+    Api().publish_neis_timetable_for_week("2026-04-22")
+
+    assert calls["n"] == 1
+
+
 def test_start_run_keeps_neis_browser_open_for_manual_verification(monkeypatch):
     calls = []
 
