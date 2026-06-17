@@ -695,4 +695,3 @@ export const PlaceholderView = ({ title, icon, body }) => (
   </>
 );
 
-Object.assign(window, { BasicsView, TimetableView, RosterView, DriveView, AuthView, PlaceholderView });
