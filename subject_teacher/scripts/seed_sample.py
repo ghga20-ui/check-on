@@ -18,6 +18,7 @@ from subject_teacher.drive.schemas import (
     TimetableSlot,
 )
 from subject_teacher.drive.store import DriveStore
+from subject_teacher.local_store import save_local_students
 
 
 def main() -> None:
@@ -56,7 +57,7 @@ def main() -> None:
             ],
         )
     )
-    store.save_students(
+    save_local_students(
         Students(
             schemaVersion=1,
             classes={

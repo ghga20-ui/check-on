@@ -7,6 +7,7 @@ from CTkMessagebox import CTkMessagebox
 
 from regions import DEFAULT_REGION, REGION_LIST
 from subject_teacher.drive.schemas import SCHEMA_VERSION, StudentEntry, Students, Timetable, TimetableSlot
+from subject_teacher.local_store import load_local_students, save_local_students
 from subject_teacher.state import build_store, default_settings
 
 
@@ -915,7 +916,7 @@ class SetupTab(ctk.CTkFrame):
             store = self._with_store()
             settings = store.load_settings() or default_settings(self.region_var.get(), int(self.year_var.get()), int(self.term_var.get()))
             timetable = store.load_timetable()
-            students = store.load_students()
+            students = load_local_students()
 
             self.region_var.set(settings.region)
             self.year_var.set(str(settings.semester.year))
@@ -980,9 +981,8 @@ class SetupTab(ctk.CTkFrame):
     def save_students_to_drive(self) -> None:
         try:
             students = self._collect_students()
-            store = self._with_store()
-            store.save_students(students)
-            self.app.write_log("students.json 저장 완료")
+            save_local_students(students)
+            self.app.write_log("학생 명부(로컬) 저장 완료")
         except Exception as exc:
             CTkMessagebox(title="학생 명부 저장 실패", message=str(exc), icon="cancel")
 
