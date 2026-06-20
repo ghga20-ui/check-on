@@ -25,6 +25,10 @@ def get_password_path() -> Path:
     return get_app_data_dir() / "password.bin"
 
 
+def get_neis_api_key_path() -> Path:
+    return get_app_data_dir() / "neis_api_key.bin"
+
+
 def get_client_secrets_path() -> Path:
     project_root = Path(__file__).resolve().parent.parent
     project_path = project_root / "client_secrets.json"

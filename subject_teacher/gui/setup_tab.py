@@ -746,7 +746,9 @@ class SetupTab(ctk.CTkFrame):
             day_label = row["day"].get().strip()
             period = int(row["period"].get().strip())
             grade = int(row["grade"].get().strip())
-            class_no = int(row["class_no"].get().strip())
+            class_no = row["class_no"].get().strip()
+            if not class_no:
+                continue
             slots.append(
                 TimetableSlot(
                     id=f"{day_label}-{period}",
