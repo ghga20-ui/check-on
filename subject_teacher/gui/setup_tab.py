@@ -981,8 +981,9 @@ class SetupTab(ctk.CTkFrame):
     def save_students_to_drive(self) -> None:
         try:
             students = self._collect_students()
-            save_local_students(students)
-            self.app.write_log("학생 명부(로컬) 저장 완료")
+            save_local_students(students)             # 이름까지 로컬
+            self._with_store().save_students(students) # 번호만 Drive
+            self.app.write_log("학생 명부 저장 완료 (이름은 로컬, 번호만 동기화)")
         except Exception as exc:
             CTkMessagebox(title="학생 명부 저장 실패", message=str(exc), icon="cancel")
 

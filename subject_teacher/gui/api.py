@@ -594,7 +594,8 @@ class Api:
             from subject_teacher.local_store import save_local_students
 
             students = parse_students_tsv(tsv)
-            save_local_students(students)
+            save_local_students(students)          # full names → local (DPAPI)
+            self._store().save_students(students)  # numbers only → Drive (store strips names)
             self._clear_slot_cache()
             return json.dumps({"ok": True})
         except Exception as exc:
@@ -676,9 +677,14 @@ class Api:
                 slots=[],
             )
             monthly = store.load_monthly(month) or _empty_mobile_month(month)
+            students = store.load_students() or Students(
+                schemaVersion=SCHEMA_VERSION,
+                classes={},
+            )
             return json.dumps(
                 {
                     "settings": _dump_model_or_none(settings),
+                    "students": students.model_dump(by_alias=True, mode="json"),
                     "timetable": timetable.model_dump(by_alias=True, mode="json"),
                     "attendanceByDate": monthly.model_dump(by_alias=True, mode="json")["records"],
                     "queue": [],

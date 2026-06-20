@@ -57,18 +57,18 @@ def main() -> None:
             ],
         )
     )
-    save_local_students(
-        Students(
-            schemaVersion=1,
-            classes={
-                "2-1": [
-                    StudentEntry(number=18, name="정소빈"),
-                    StudentEntry(number=19, name="조성준"),
-                    StudentEntry(number=20, name="조승현"),
-                ]
-            },
-        )
+    sample_students = Students(
+        schemaVersion=1,
+        classes={
+            "2-1": [
+                StudentEntry(number=18, name="정소빈"),
+                StudentEntry(number=19, name="조성준"),
+                StudentEntry(number=20, name="조승현"),
+            ]
+        },
     )
+    save_local_students(sample_students)
+    store.save_students(sample_students)
     store.save_monthly(
         MonthlyAttendance(
             schemaVersion=1,
