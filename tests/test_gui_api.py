@@ -96,16 +96,23 @@ def test_timetable_tsv_api_returns_structured_error(monkeypatch):
     assert payload == {"error": "Drive 인증 필요"}
 
 
-def test_students_tsv_api_returns_structured_error(monkeypatch):
+def test_students_tsv_api_reads_local_roster_without_drive(tmp_path, monkeypatch):
+    # Roster is stored on-device now; a Drive auth failure must not break reads.
     monkeypatch.setattr(
         gui_api,
         "build_store",
         lambda: (_ for _ in ()).throw(RuntimeError("Drive 인증 필요")),
     )
+    monkeypatch.setattr(
+        "subject_teacher.local_store.get_students_path",
+        lambda: tmp_path / "students.local.json",
+    )
 
-    payload = json.loads(Api().get_students_tsv())
+    result = Api().get_students_tsv()
 
-    assert payload == {"error": "Drive 인증 필요"}
+    # Returns TSV text (empty when no local roster) — not a Drive error.
+    assert "Drive 인증 필요" not in result
+    assert not result.strip()
 
 
 def test_api_errors_convert_invalid_grant_to_reauth_code(monkeypatch):
