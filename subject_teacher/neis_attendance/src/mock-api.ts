@@ -51,5 +51,6 @@ export function createMockApi(): DesktopApi {
     publish_neis_timetable_for_week: () => ok({ ok: true, count: 0, effectiveFrom: "2026-04-20" }),
     find_neis_subject_candidates: () => ok({ scope: "grade", candidates: [] }),
     start_run: () => ok({ ok: true }),
+    reconnect: () => ok({ displayName: "Demo", emailAddress: "demo@example.com" }),
   };
 }
