@@ -619,9 +619,20 @@ def select_period(
 ) -> None:
     xpath = build_period_row_xpath(period, subject_label)
     try:
-        if _click_period_row_by_text(driver, period, subject_label, grade, class_no):
-            _wait_for_student_grid_ready(driver, period, subject_label, grade, class_no)
-            return
+        # The period list refreshes after a date change; matching too early (before
+        # the rows for the new date exist) intermittently fails. Wait for period rows
+        # to be present, then retry the fast/reliable JS text match for a few seconds
+        # before falling back to the slower XPath wait.
+        try:
+            _wait(driver, 10).until(lambda d: page_has_period_rows(d))
+        except Exception:
+            pass
+        deadline = time.time() + 6
+        while time.time() < deadline:
+            if _click_period_row_by_text(driver, period, subject_label, grade, class_no):
+                _wait_for_student_grid_ready(driver, period, subject_label, grade, class_no)
+                return
+            time.sleep(0.4)
 
         row = _wait(driver, 15).until(EC.presence_of_element_located((By.XPATH, xpath)))
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", row)
@@ -1116,11 +1127,14 @@ def _dialog_button_for_text(driver: WebDriver, message_texts: list[str], button_
       "[role='button']",
       ".cl-button",
       ".cl-text-wrapper",
-      ".cl-text",
       "[data-role='button']",
       "input[type='button']",
       "input[type='submit']"
-    ].join(","))).filter(isVisible);
+    ].join(","))).filter(isVisible)
+      // The dialog header/title can also read '확인' (cl-dialog-header > .cl-text).
+      // Excluding the header (and dropping the bare .cl-text selector) ensures we
+      // click the real action button, not the title bar.
+      .filter((el) => !el.closest(".cl-dialog-header"));
 
     const okButton = controls.find((el) => compact(textOf(el)) === compactButtonText) ||
       controls.find((el) => {
