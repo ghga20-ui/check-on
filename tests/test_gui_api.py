@@ -563,3 +563,12 @@ def test_reconnect_runs_interactive_auth_then_returns_account(monkeypatch):
 
     assert called.get("auth") is True
     assert payload["emailAddress"] == "x@y.com"
+
+
+def test_save_password_persists_via_local_store(monkeypatch):
+    saved = {}
+    monkeypatch.setattr("subject_teacher.state.save_local_password", lambda pw: saved.setdefault("pw", pw))
+    a = gui_api.Api.__new__(gui_api.Api)
+    payload = json.loads(a.save_password("p84848484!"))
+    assert payload == {"ok": True}
+    assert saved["pw"] == "p84848484!"

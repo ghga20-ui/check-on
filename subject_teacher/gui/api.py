@@ -41,7 +41,6 @@ from subject_teacher.state import (
     load_local_neis_api_key,
     load_local_password,
     save_local_neis_api_key,
-    save_local_password,
     summarize_day,
     serialize_timetable_tsv,
     parse_timetable_tsv,
@@ -426,8 +425,14 @@ class Api:
     def get_password(self) -> str:
         return load_local_password()
 
-    def save_password(self, password: str) -> None:
-        save_local_password(password)
+    def save_password(self, password: str) -> str:
+        try:
+            from subject_teacher.state import save_local_password
+
+            save_local_password(password)
+            return json.dumps({"ok": True})
+        except Exception as exc:
+            return _json_error(exc)
 
     def get_neis_api_key(self) -> str:
         return load_local_neis_api_key()
