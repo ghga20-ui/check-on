@@ -118,7 +118,7 @@ function App() {
       appendLog("안내", "브라우저 미리보기에서는 샘플 설정을 사용합니다");
       return Promise.resolve();
     }
-    appendLog("안내", "Drive 설정을 불러오는 중...");
+    appendLog("안내", "설정을 불러오는 중...");
     return window.pywebview!.api.get_drive_user()
       .then(userRaw => window.pywebview!.api.get_settings().then(settingsRaw => ({ userRaw, settingsRaw })))
       .then(({ userRaw, settingsRaw }) => (
@@ -139,16 +139,16 @@ function App() {
       setCloseAfter(loadedSettings.closeByDefault);
       setTimetable(loadedTimetable);
       setRosters(syncRostersToTimetable(loadedRosters, loadedTimetable, loadedSettings.assignedLessons));
-      appendLog("완료", `Drive 설정 불러오기 완료 · ${loadedUser.emailAddress || "계정 미확인"} · 수업 ${loadedTimetable.length}개`);
+      appendLog("완료", `설정 불러오기 완료 · ${loadedUser.emailAddress || "계정 미확인"} · 수업 ${loadedTimetable.length}개`);
       return refreshSlots(toIsoDate(date));
-    }).catch(err => appendLog("오류", `Drive 설정 불러오기 실패: ${formatApiError(err)}`));
+    }).catch(err => appendLog("오류", `설정 불러오기 실패: ${formatApiError(err)}`));
   };
 
   useEffect(() => {
     setRosters(prev => syncRostersToTimetable(prev, timetable, settings.assignedLessons));
   }, [rosterKeySignature]);
 
-  const saveSettings = (successMessage = "settings.json 저장 완료") => {
+  const saveSettings = (successMessage = "기본 정보 저장됨") => {
     if (!(window.__isPywebview && window.__isPywebview())) {
       appendLog("완료", `${successMessage} (미리보기)`);
       return Promise.resolve();
@@ -159,21 +159,21 @@ function App() {
         appendLog("완료", successMessage);
         return refreshSlots(toIsoDate(date));
       })
-      .catch(err => appendLog("오류", `settings.json 저장 실패: ${formatApiError(err)}`));
+      .catch(err => appendLog("오류", `기본 정보 저장 실패: ${formatApiError(err)}`));
   };
 
   const saveTimetable = () => {
     if (!(window.__isPywebview && window.__isPywebview())) {
-      appendLog("완료", "timetable.json 저장 완료 (미리보기)");
+      appendLog("완료", "시간표 저장됨 (미리보기)");
       return;
     }
     window.pywebview!.api.save_timetable_tsv(timetableRowsToTsv(timetable), settings.effectiveFrom)
       .then(raw => {
         parseJsonResult(raw);
-        appendLog("완료", "timetable.json 저장 완료");
+        appendLog("완료", "시간표 저장됨");
         return refreshSlots(toIsoDate(date));
       })
-      .catch(err => appendLog("오류", `timetable.json 저장 실패: ${formatApiError(err)}`));
+      .catch(err => appendLog("오류", `시간표 저장 실패: ${formatApiError(err)}`));
   };
 
   const previewNeisPublicTimetable = (payload) => {
@@ -242,12 +242,12 @@ function App() {
       .then(raw => {
         const data = parseJsonResult(raw);
         mobileTimetableSyncRef.current.add(data.effectiveFrom || weekKey);
-        if (!options.silent) appendLog("완료", `모바일용 timetable.json 갱신 완료 · ${data.count || 0}건`);
+        if (!options.silent) appendLog("완료", `모바일용 시간표 갱신 완료 · ${data.count || 0}건`);
         return data;
       })
       .catch(err => {
         mobileTimetableSyncRef.current.delete(weekKey);
-        appendLog("오류", `모바일용 timetable.json 갱신 실패: ${formatApiError(err)}`);
+        appendLog("오류", `모바일용 시간표 갱신 실패: ${formatApiError(err)}`);
       });
   };
 
@@ -266,15 +266,15 @@ function App() {
 
   const saveRosters = () => {
     if (!(window.__isPywebview && window.__isPywebview())) {
-      appendLog("완료", "students.json 저장 완료 (미리보기)");
+      appendLog("완료", "학생 명부 저장됨 (미리보기)");
       return;
     }
     window.pywebview!.api.save_students_tsv(rostersToTsv(syncRostersToTimetable(rosters, timetable, settings.assignedLessons)))
       .then(raw => {
         parseJsonResult(raw);
-        appendLog("완료", "students.json 저장 완료");
+        appendLog("완료", "학생 명부 저장됨");
       })
-      .catch(err => appendLog("오류", `students.json 저장 실패: ${formatApiError(err)}`));
+      .catch(err => appendLog("오류", `학생 명부 저장 실패: ${formatApiError(err)}`));
   };
 
   const importRosterFile = (klass) => {
@@ -304,7 +304,7 @@ function App() {
     return window.pywebview!.api.save_slot_attendance(toIsoDate(date), slotId, JSON.stringify(marks))
       .then(raw => {
         const data = parseJsonResult(raw);
-        appendLog("완료", "attendance Drive 저장 완료");
+        appendLog("완료", "출결 저장됨");
         return refreshSlots(toIsoDate(date)).then(() => data);
       });
   };
