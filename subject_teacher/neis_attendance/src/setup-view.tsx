@@ -24,7 +24,7 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
         <Icon name="gear" size={16}/>
         <span className="title">기본 정보</span>
         <div className="topbar-actions">
-          <button className="tb-btn" onClick={loadSetupData}><Icon name="cloud" size={14}/> Drive에서 불러오기</button>
+          <button className="tb-btn" onClick={loadSetupData}><Icon name="cloud" size={14}/> 불러오기</button>
           <button className="tb-btn primary" onClick={saveSettings}>
             <Icon name="check" size={14}/> 저장
           </button>
@@ -34,13 +34,13 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
         <div className="page-hero">
           <div>
             <h1>기본 정보</h1>
-            <div className="subtitle">학교·학기 정보와 실행 기본값을 정리합니다.</div>
+            <div className="subtitle">학교·학기 정보와 기본값을 정리합니다.</div>
           </div>
         </div>
 
         <div className="list-group form-list">
           <div className="form-row">
-            <div><div className="rlabel">학교명</div><div className="rhint">NEIS 공개 API 시간표 가져오기에 사용됩니다.</div></div>
+            <div><div className="rlabel">학교명</div><div className="rhint">시간표를 자동으로 가져올 때 사용해요.</div></div>
             <div className="rctrl">
               <input className="input" style={{width:220}} value={settings.schoolName || ""} onChange={e => setSettings({...settings, schoolName: e.target.value})} placeholder="예: 수원고등학교"/>
             </div><div/>
@@ -52,7 +52,7 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
             </div><div/>
           </div>
           <div className="form-row">
-            <div><div className="rlabel">교육청</div><div className="rhint">NEIS 주소 라우팅에 사용됩니다.</div></div>
+            <div><div className="rlabel">교육청</div><div className="rhint">우리 지역 NEIS에 접속할 때 사용해요.</div></div>
             <div className="rctrl">
               <select className="select" value={settings.region} onChange={e => setSettings({...settings, region: e.target.value})}>
                 {["서울","부산","대구","인천","광주","대전","울산","세종","경기","강원","충북","충남","전북","전남","경북","경남","제주"].map(r=>
@@ -81,33 +81,10 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
             </div><div/>
           </div>
           <div className="form-row">
-            <div><div className="rlabel">출결마감 자동 실행</div><div className="rhint">실행 탭의 기본값으로 사용돼요.</div></div>
+            <div><div className="rlabel">출결마감 자동 실행</div><div className="rhint">오늘 출결 화면의 기본값이 돼요.</div></div>
             <div className="rctrl">
               <Toggle on={settings.closeByDefault} onChange={v => setSettings({...settings, closeByDefault: v})}/>
             </div><div/>
-          </div>
-        </div>
-
-        <div className="section">
-          <div className="section-head">
-            <div><h2>연결 상태</h2><div className="desc">Google Drive와 인증서의 상태를 확인합니다.</div></div>
-          </div>
-          <div className="stat-grid" style={{gridTemplateColumns:"repeat(3, minmax(0,1fr))"}}>
-            <div className="stat-card success">
-              <div className="label"><span className="dot" style={{background:"var(--green)"}}/>Drive</div>
-              <div className="value" style={{fontSize:22}}>{driveUser?.emailAddress ? "연결됨" : "확인 전"}</div>
-              <div className="note ok">{accountLabel(driveUser)}</div>
-            </div>
-            <div className="stat-card accent">
-              <div className="label"><span className="dot"/>OAuth</div>
-              <div className="value" style={{fontSize:22}}>{driveUser?.emailAddress ? "유효" : "미확인"}</div>
-              <div className="note">Drive appDataFolder 권한</div>
-            </div>
-            <div className="stat-card">
-              <div className="label"><span className="dot" style={{background:"var(--orange)"}}/>DPAPI 토큰</div>
-              <div className="value" style={{fontSize:22}}>저장됨</div>
-              <div className="note">마지막 갱신 2026.04.18</div>
-            </div>
           </div>
         </div>
       </div>
