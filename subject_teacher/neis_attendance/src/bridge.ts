@@ -15,6 +15,7 @@ export interface DesktopApi {
   get_password(): Promise<string>;
   save_password(pw: string): Promise<void>;
   import_students_file(classKey: string): Promise<string>;
+  search_schools(payloadJson: string): Promise<string>;
   preview_neis_public_timetable(payloadJson: string): Promise<string>;
   publish_neis_timetable_for_week(dateStr: string): Promise<string>;
   find_neis_subject_candidates(payloadJson: string): Promise<string>;

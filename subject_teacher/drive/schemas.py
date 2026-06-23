@@ -73,6 +73,11 @@ class Settings(_Base):
     teacher_name: str
     school_name: str
     region: str
+    # Standard school code (SD_SCHUL_CODE) + 학교급, confirmed via the school
+    # picker. When set, NEIS timetable lookups use the code directly instead of
+    # resolving by name, which disambiguates同名 schools. Empty for legacy data.
+    school_code: str = ""
+    school_kind: str = ""
     semester: Semester
     close_by_default: bool = False
     timetable_mode: Literal["manual", "neis"] = "neis"

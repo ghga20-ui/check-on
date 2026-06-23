@@ -10,7 +10,32 @@ const todayIso = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSetupData, saveSettings }) => {
+export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSetupData, saveSettings, searchSchools }) => {
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+
+  const runSchoolSearch = () => {
+    const name = (settings.schoolName || "").trim();
+    if (!name) { setSearchError("학교명을 먼저 입력하세요."); return; }
+    setSearching(true); setSearchError(""); setCandidates([]);
+    Promise.resolve(searchSchools({ region: settings.region, schoolName: name }))
+      .then(res => {
+        if (res && res.error) { setSearchError(String(res.error)); return; }
+        const list = (res && res.schools) || [];
+        setCandidates(list);
+        if (!list.length) setSearchError("검색 결과가 없습니다. 학교명을 확인하세요.");
+      })
+      .catch(err => setSearchError(err && err.message ? err.message : String(err)))
+      .finally(() => setSearching(false));
+  };
+
+  const pickSchool = (s) => {
+    setSettings({ ...settings, schoolName: s.name, schoolCode: s.code, schoolKind: s.kind });
+    setCandidates([]); setSearchError("");
+    if (appendLog) appendLog("완료", `학교 확정: ${s.name} (${s.kind})`);
+  };
+
   return (
     <>
       <div className="topbar">
@@ -32,11 +57,44 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
 
         <div className="list-group form-list">
           <div className="form-row">
-            <div><div className="rlabel">학교명</div><div className="rhint">시간표를 자동으로 가져올 때 사용해요.</div></div>
-            <div className="rctrl">
-              <input className="input" style={{width:220}} value={settings.schoolName || ""} onChange={e => setSettings({...settings, schoolName: e.target.value})} placeholder="예: 수원고등학교"/>
-            </div><div/>
+            <div><div className="rlabel">학교</div><div className="rhint">학교를 찾아 선택하면 같은 이름 학교가 있어도 시간표를 정확히 가져와요.</div></div>
+            <div className="rctrl" style={{display:"flex", gap:8, alignItems:"center", flexWrap:"wrap"}}>
+              <input className="input" style={{width:200}} value={settings.schoolName || ""}
+                onChange={e => setSettings({...settings, schoolName: e.target.value, schoolCode: "", schoolKind: ""})}
+                placeholder="예: 수원고등학교"/>
+              <button className="tb-btn" onClick={runSchoolSearch} disabled={searching}>
+                <Icon name="search" size={14}/> {searching ? "찾는 중…" : "학교 찾기"}
+              </button>
+              {settings.schoolCode
+                ? <Chip kind="ok"><Icon name="check" size={11}/> 학교 확정 · {settings.schoolKind || "학교"}</Chip>
+                : <Chip kind="gray" dot={false}>미확정</Chip>}
+            </div>
+            <div/>
           </div>
+          {searchError && (
+            <div className="form-row">
+              <div><div className="rhint">안내</div></div>
+              <div className="rctrl" style={{color:"#C42017", fontSize:13}}>{searchError}</div>
+              <div/>
+            </div>
+          )}
+          {candidates.length > 0 && (
+            <div className="form-row">
+              <div><div className="rlabel">검색 결과</div><div className="rhint">맞는 학교를 선택하세요.</div></div>
+              <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:6, width:"100%"}}>
+                {candidates.map(s => (
+                  <button key={s.code} className="tb-btn" style={{display:"flex", justifyContent:"space-between", alignItems:"center", textAlign:"left", width:"100%"}} onClick={() => pickSchool(s)}>
+                    <span>
+                      <strong>{s.name}</strong> · {s.kind}
+                      <div style={{opacity:.7, fontSize:12, marginTop:2}}>{s.district || ""}{s.district && s.address ? " · " : ""}{s.address || ""}</div>
+                    </span>
+                    <span style={{flex:"0 0 auto", marginLeft:10}}><Icon name="chev-r" size={14}/> 선택</span>
+                  </button>
+                ))}
+              </div>
+              <div/>
+            </div>
+          )}
           <div className="form-row">
             <div><div className="rlabel">교사명</div><div className="rhint">화면 표시용입니다.</div></div>
             <div className="rctrl">

@@ -48,6 +48,10 @@ export function createMockApi(): DesktopApi {
     get_password: () => Promise.resolve(""),
     save_password: () => Promise.resolve(),
     import_students_file: (classKey) => ok({ classKey, students: [] }),
+    search_schools: () => ok({ schools: [
+      { name: "데모고등학교", code: "0000001", kind: "고등학교", officeCode: "B10", district: "데모교육지원청", address: "서울특별시 ○○구 ○○로 1" },
+      { name: "데모고등학교", code: "0000002", kind: "고등학교", officeCode: "B10", district: "다른교육지원청", address: "서울특별시 △△구 △△로 2" },
+    ] }),
     preview_neis_public_timetable: () => ok({ school: { name: "Demo High School" }, lessons: [] }),
     publish_neis_timetable_for_week: () => ok({ ok: true, count: 0, effectiveFrom: "2026-04-20" }),
     find_neis_subject_candidates: () => ok({ scope: "grade", candidates: [] }),

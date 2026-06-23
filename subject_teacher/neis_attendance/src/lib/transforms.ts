@@ -11,12 +11,14 @@ export type AssignedLesson = Readonly<{
 }>;
 
 export type SettingsUi = Readonly<{
-  teacherName: string; schoolName: string; region: string; year: string; term: string; effectiveFrom: string;
+  teacherName: string; schoolName: string; schoolCode: string; schoolKind: string;
+  region: string; year: string; term: string; effectiveFrom: string;
   closeByDefault: boolean; timetableMode: string; assignedLessons: readonly AssignedLesson[];
 }>;
 
 export type SettingsApi = Readonly<{
-  schemaVersion: 1; teacherName: string; schoolName: string; region: string;
+  schemaVersion: 1; teacherName: string; schoolName: string; schoolCode: string; schoolKind: string;
+  region: string;
   semester: Readonly<{ year: number; term: number }>; closeByDefault: boolean; timetableMode: string;
   assignedLessons: readonly AssignedLesson[]; updatedAt: string;
 }>;
@@ -127,6 +129,8 @@ export const settingsFromApi = (data: unknown): SettingsUi => {
   return {
     teacherName: stringValue(source.teacherName),
     schoolName: stringValue(source.schoolName),
+    schoolCode: stringValue(source.schoolCode),
+    schoolKind: stringValue(source.schoolKind),
     region: stringValue(source.region, "서울"),
     year: String(semester.year || new Date().getFullYear()),
     term: String(semester.term || "1"),
@@ -151,6 +155,8 @@ export const settingsToApi = (settings: SettingsUi): SettingsApi => ({
   schemaVersion: 1,
   teacherName: settings.teacherName || "",
   schoolName: settings.schoolName || "",
+  schoolCode: settings.schoolCode || "",
+  schoolKind: settings.schoolKind || "",
   region: settings.region,
   semester: { year: Number(settings.year), term: Number(settings.term) },
   closeByDefault: Boolean(settings.closeByDefault),

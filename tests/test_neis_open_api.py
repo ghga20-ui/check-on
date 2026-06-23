@@ -6,6 +6,7 @@ from subject_teacher.neis_open_api import (
     _fetch_json,
     query_subject_candidates,
     query_class_timetable,
+    search_schools,
     subject_matches,
 )
 
@@ -19,6 +20,86 @@ def test_subject_matching_normalizes_arabic_and_roman_numerals():
 
 def test_subject_matching_uses_teacher_aliases():
     assert subject_matches("문학과 매체", ["문학"], aliases=["문학과매체"]) is True
+
+
+def test_search_schools_returns_candidates_with_location_for_disambiguation():
+    def fake_fetch(endpoint, params):
+        assert endpoint == "schoolInfo"
+        assert params["ATPT_OFCDC_SC_CODE"] == "J10"
+        assert params["SCHUL_NM"] == "중앙고"
+        return {
+            "schoolInfo": [
+                {"head": [{"list_total_count": 3}]},
+                {
+                    "row": [
+                        {
+                            "ATPT_OFCDC_SC_CODE": "J10",
+                            "SD_SCHUL_CODE": "7530001",
+                            "SCHUL_NM": "중앙고등학교",
+                            "SCHUL_KND_SC_NM": "고등학교",
+                            "JU_ORG_NM": "수원교육지원청",
+                            "ORG_RDNMA": "경기도 수원시 팔달구 ...",
+                        },
+                        {
+                            "ATPT_OFCDC_SC_CODE": "J10",
+                            "SD_SCHUL_CODE": "7530002",
+                            "SCHUL_NM": "중앙고등학교",
+                            "SCHUL_KND_SC_NM": "고등학교",
+                            "JU_ORG_NM": "고양교육지원청",
+                            "ORG_RDNMA": "경기도 고양시 일산동구 ...",
+                        },
+                        {
+                            "ATPT_OFCDC_SC_CODE": "J10",
+                            "SD_SCHUL_CODE": "7530003",
+                            "SCHUL_NM": "중앙유치원",
+                            "SCHUL_KND_SC_NM": "유치원",
+                        },
+                    ]
+                },
+            ]
+        }
+
+    result = search_schools(region="경기", school_name="중앙고", fetch_json=fake_fetch)
+
+    # Two same-named high schools surface separately; the unsupported 유치원 is dropped.
+    assert [s["code"] for s in result["schools"]] == ["7530001", "7530002"]
+    first = result["schools"][0]
+    assert first["name"] == "중앙고등학교"
+    assert first["kind"] == "고등학교"
+    assert first["officeCode"] == "J10"
+    assert first["district"] == "수원교육지원청"
+    assert "수원" in first["address"]
+
+
+def test_query_class_timetable_with_school_code_skips_school_info_lookup():
+    calls = []
+
+    def fake_fetch(endpoint, params):
+        calls.append(endpoint)
+        assert endpoint == "hisTimetable"
+        assert params["ATPT_OFCDC_SC_CODE"] == "J10"
+        assert params["SD_SCHUL_CODE"] == "7530174"
+        return {
+            "hisTimetable": [
+                {"head": [{"list_total_count": 1}]},
+                {"row": [{"GRADE": "2", "CLASS_NM": "1", "PERIO": "3", "ITRT_CNTNT": "문학"}]},
+            ]
+        }
+
+    result = query_class_timetable(
+        region="경기",
+        school_name="수원고등학교",
+        school_code="7530174",
+        school_kind="고등학교",
+        date_str="2025-03-10",
+        grade=2,
+        class_no="1",
+        fetch_json=fake_fetch,
+    )
+
+    assert "schoolInfo" not in calls
+    assert result["school"]["code"] == "7530174"
+    assert result["lessons"][0]["subject"] == "문학"
 
 
 def test_query_class_timetable_maps_high_school_rows_to_preview_lessons():

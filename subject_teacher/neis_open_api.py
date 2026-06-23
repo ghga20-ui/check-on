@@ -131,6 +131,57 @@ def subject_matches(actual: str, expected: list[str], aliases: list[str] | None 
     return any(actual_norm == normalize_subject_name(candidate) for candidate in candidates)
 
 
+def search_schools(
+    *,
+    region: str,
+    school_name: str,
+    api_key: str = "",
+    fetch_json: Callable[[str, dict[str, object]], dict[str, Any]] = _fetch_json,
+) -> dict[str, Any]:
+    """Find schools in a region by (partial) name, for disambiguating同名 schools.
+
+    Returns every matching school that has a timetable endpoint, each with its
+    standard school code (SD_SCHUL_CODE) plus 관할청/주소 so the teacher can pick
+    the right one when several share a name. The chosen code is then stored and
+    used for timetable lookups, so the resolution never has to guess again.
+    """
+
+    school_name = school_name.strip()
+    if not school_name:
+        raise NeisOpenApiError("학교명을 입력해 주세요")
+    if region not in REGION_TO_ATPT_CODE:
+        raise NeisOpenApiError(f"지원하지 않는 교육청입니다: {region}")
+
+    atpt_code = REGION_TO_ATPT_CODE[region]
+    payload = fetch_json(
+        "schoolInfo",
+        {
+            "KEY": api_key,
+            "Type": "json",
+            "pIndex": 1,
+            "pSize": 100,
+            "ATPT_OFCDC_SC_CODE": atpt_code,
+            "SCHUL_NM": school_name,
+        },
+    )
+    schools: list[dict[str, Any]] = []
+    for row in _rows_from_payload(payload, "schoolInfo"):
+        kind = str(row.get("SCHUL_KND_SC_NM") or "")
+        if kind not in SCHOOL_KIND_TO_TIMETABLE_ENDPOINT:
+            continue  # skip 유치원 등 시간표 API가 없는 학교급
+        schools.append(
+            {
+                "name": str(row.get("SCHUL_NM") or ""),
+                "code": str(row.get("SD_SCHUL_CODE") or ""),
+                "kind": kind,
+                "officeCode": str(row.get("ATPT_OFCDC_SC_CODE") or atpt_code),
+                "district": str(row.get("JU_ORG_NM") or ""),
+                "address": str(row.get("ORG_RDNMA") or ""),
+            }
+        )
+    return {"schools": schools}
+
+
 def _resolve_school_and_endpoint(
     *,
     region: str,
@@ -205,6 +256,54 @@ def _resolve_school_cached(
         return resolved
 
 
+def _resolve_school(
+    *,
+    region: str,
+    school_name: str,
+    school_code: str = "",
+    school_kind: str = "",
+    api_key: str,
+    fetch_json: Callable[[str, dict[str, object]], dict[str, Any]],
+    school_cache: dict[tuple[str, str, str], tuple[dict[str, Any], str, dict[str, object]]] | None = None,
+) -> tuple[dict[str, Any], str, dict[str, object]]:
+    """Resolve a school + timetable endpoint, preferring an explicit code.
+
+    When a standard school code and school kind are supplied (saved by the
+    school picker), build the school directly with no ``schoolInfo`` request —
+    this is both faster and immune to同名 schools. Otherwise fall back to
+    resolving by name (legacy settings that predate the picker).
+    """
+
+    code = (school_code or "").strip()
+    kind = (school_kind or "").strip()
+    if code and kind:
+        if region not in REGION_TO_ATPT_CODE:
+            raise NeisOpenApiError(f"지원하지 않는 교육청입니다: {region}")
+        endpoint = SCHOOL_KIND_TO_TIMETABLE_ENDPOINT.get(kind)
+        if endpoint is None:
+            raise NeisOpenApiError("지원하지 않는 학교급입니다.")
+        school = {
+            "ATPT_OFCDC_SC_CODE": REGION_TO_ATPT_CODE[region],
+            "SD_SCHUL_CODE": code,
+            "SCHUL_NM": school_name.strip(),
+            "SCHUL_KND_SC_NM": kind,
+        }
+        base_params: dict[str, object] = {
+            "KEY": api_key,
+            "Type": "json",
+            "pIndex": 1,
+            "pSize": 100,
+        }
+        return school, endpoint, base_params
+    return _resolve_school_cached(
+        region=region,
+        school_name=school_name,
+        api_key=api_key,
+        fetch_json=fetch_json,
+        school_cache=school_cache,
+    )
+
+
 def _weekdays_for(date_str: str) -> list[date_type]:
     selected_date = _parse_date(date_str)
     monday = selected_date - timedelta(days=selected_date.weekday())
@@ -244,6 +343,8 @@ def query_subject_candidates(
     grade: int,
     class_no: str = "",
     subject_name: str,
+    school_code: str = "",
+    school_kind: str = "",
     api_key: str = "",
     fetch_json: Callable[[str, dict[str, object]], dict[str, Any]] = _fetch_json,
 ) -> dict[str, Any]:
@@ -253,9 +354,11 @@ def query_subject_candidates(
     if not subject_name:
         raise NeisOpenApiError("과목명을 먼저 입력해 주세요")
 
-    school, endpoint, base_params = _resolve_school_and_endpoint(
+    school, endpoint, base_params = _resolve_school(
         region=region,
         school_name=school_name,
+        school_code=school_code,
+        school_kind=school_kind,
         api_key=api_key,
         fetch_json=fetch_json,
     )
@@ -312,6 +415,8 @@ def query_class_timetable(
     date_str: str,
     grade: int,
     class_no: str,
+    school_code: str = "",
+    school_kind: str = "",
     api_key: str = "",
     fetch_json: Callable[[str, dict[str, object]], dict[str, Any]] = _fetch_json,
     school_cache: dict[tuple[str, str, str], tuple[dict[str, Any], str, dict[str, object]]] | None = None,
@@ -333,9 +438,11 @@ def query_class_timetable(
 
     selected_date = _parse_date(date_str)
     atpt_code = REGION_TO_ATPT_CODE[region]
-    school, endpoint, base_params = _resolve_school_cached(
+    school, endpoint, base_params = _resolve_school(
         region=region,
         school_name=school_name,
+        school_code=school_code,
+        school_kind=school_kind,
         api_key=api_key,
         fetch_json=fetch_json,
         school_cache=school_cache,

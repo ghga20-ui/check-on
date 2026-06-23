@@ -34,6 +34,7 @@ from subject_teacher.neis_open_api import (
     normalize_subject_name,
     query_class_timetable,
     query_subject_candidates,
+    search_schools,
     subject_matches,
 )
 from subject_teacher.state import (
@@ -57,6 +58,7 @@ SERIALIZED_API_METHODS = {
     "save_settings",
     "get_timetable_tsv",
     "save_timetable_tsv",
+    "search_schools",
     "preview_neis_public_timetable",
     "publish_neis_timetable_for_week",
     "find_neis_subject_candidates",
@@ -256,6 +258,8 @@ def _neis_mode_today_slots(
         preview = query_class_timetable(
             region=settings.region,
             school_name=settings.school_name,
+            school_code=getattr(settings, "school_code", "") or "",
+            school_kind=getattr(settings, "school_kind", "") or "",
             date_str=date_str,
             grade=grade,
             class_no=class_no,
@@ -510,12 +514,27 @@ class Api:
         except Exception as exc:
             return _json_error(exc)
 
+    def search_schools(self, payload: str) -> str:
+        try:
+            data = json.loads(payload)
+            result = search_schools(
+                region=str(data.get("region") or ""),
+                school_name=str(data.get("schoolName") or ""),
+                api_key=str(data.get("apiKey") or "") or load_local_neis_api_key(),
+            )
+            return json.dumps(result, ensure_ascii=False)
+        except Exception as exc:
+            logger.exception("search_schools failed")
+            return _json_error(exc)
+
     def preview_neis_public_timetable(self, payload: str) -> str:
         try:
             data = json.loads(payload)
             result = query_class_timetable(
                 region=str(data.get("region") or ""),
                 school_name=str(data.get("schoolName") or ""),
+                school_code=str(data.get("schoolCode") or ""),
+                school_kind=str(data.get("schoolKind") or ""),
                 date_str=str(data.get("date") or ""),
                 grade=int(data.get("grade") or 0),
                 class_no=str(data.get("classNo") or ""),
@@ -585,6 +604,8 @@ class Api:
             result = query_subject_candidates(
                 region=str(data.get("region") or ""),
                 school_name=str(data.get("schoolName") or ""),
+                school_code=str(data.get("schoolCode") or ""),
+                school_kind=str(data.get("schoolKind") or ""),
                 date_str=str(data.get("date") or ""),
                 grade=int(data.get("grade") or 0),
                 class_no=str(data.get("classNo") or ""),

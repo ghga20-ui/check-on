@@ -56,7 +56,7 @@ function App() {
     { ts: "09:02:15", lv: "완료", msg: "오늘 수업 6건 로드 — 3건 반영됨, 3건 대기" },
   ]);
   const [settings, setSettings] = useState<any>({
-    teacherName: "", schoolName: "", region: "서울", year: "2026", term: "1", effectiveFrom: "2026-03-02", closeByDefault: true,
+    teacherName: "", schoolName: "", schoolCode: "", schoolKind: "", region: "서울", year: "2026", term: "1", effectiveFrom: "2026-03-02", closeByDefault: true,
     timetableMode: "neis", assignedLessons: []
   });
   const [neisApiKey, setNeisApiKey] = useState<any>("");
@@ -182,6 +182,8 @@ function App() {
       ...payload,
       region: payload.region || settings.region,
       schoolName: payload.schoolName || settings.schoolName,
+      schoolCode: payload.schoolCode || settings.schoolCode,
+      schoolKind: payload.schoolKind || settings.schoolKind,
       apiKey: payload.apiKey || neisApiKey,
     };
     if (!(window.__isPywebview && window.__isPywebview())) {
@@ -201,6 +203,8 @@ function App() {
       ...payload,
       region: payload.region || settings.region,
       schoolName: payload.schoolName || settings.schoolName,
+      schoolCode: payload.schoolCode || settings.schoolCode,
+      schoolKind: payload.schoolKind || settings.schoolKind,
       apiKey: payload.apiKey || neisApiKey,
     };
     if (!(window.__isPywebview && window.__isPywebview())) {
@@ -214,6 +218,23 @@ function App() {
       return Promise.resolve({ scope: "preview", candidates });
     }
     return window.pywebview!.api.find_neis_subject_candidates(JSON.stringify(request))
+      .then(raw => parseJsonResult(raw));
+  };
+
+  const searchSchools = (payload) => {
+    const request = {
+      region: (payload && payload.region) || settings.region,
+      schoolName: (payload && payload.schoolName) || settings.schoolName,
+      apiKey: (payload && payload.apiKey) || neisApiKey,
+    };
+    if (!(window.__isPywebview && window.__isPywebview())) {
+      appendLog("안내", "브라우저 미리보기에서는 예시 학교 목록을 보여줍니다");
+      return Promise.resolve({ schools: [
+        { name: request.schoolName || "예시고등학교", code: "0000001", kind: "고등학교", officeCode: "", district: "○○교육지원청", address: "예시 주소 1" },
+        { name: request.schoolName || "예시고등학교", code: "0000002", kind: "고등학교", officeCode: "", district: "△△교육지원청", address: "예시 주소 2" },
+      ] });
+    }
+    return window.pywebview!.api.search_schools(JSON.stringify(request))
       .then(raw => parseJsonResult(raw));
   };
 
@@ -426,8 +447,8 @@ function App() {
         <div className="sb-head">
           <div className="sb-logo"><Icon name="school" size={22}/></div>
           <div className="sb-name-wrap">
-            <div className="sb-name">출결 자동화</div>
-            <div className="sb-sub">교과교사용</div>
+            <div className="sb-name">체크온</div>
+            <div className="sb-sub">교과 출결</div>
           </div>
           <button className="sb-collapse" onClick={() => setSidebarCollapsed(c => !c)} title="사이드바 접기">
             <Icon name={sidebarCollapsed ? "chev-r" : "chev-l"} size={16}/>
@@ -468,7 +489,7 @@ function App() {
 
       <main className="main">
         {page === "run"       && <RunView {...{date,setDate,password,setPassword,savePassword,closeAfter,setCloseAfter,slots,setSlots,rosters,running,progress,runLog:logLines,startRun,saveSlotAttendance,appendLog,refreshSlots,publishNeisTimetableForMobile,slotLoading,slotError}}/>}
-        {page === "basics"    && <BasicsView settings={settings} setSettings={setSettings} driveUser={driveUser} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings}/>}
+        {page === "basics"    && <BasicsView settings={settings} setSettings={setSettings} driveUser={driveUser} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings} searchSchools={searchSchools}/>}
         {page === "timetable" && <TimetableView rows={timetable} setRows={setTimetable} settings={settings} setSettings={setSettings} neisApiKey={neisApiKey} setNeisApiKey={setNeisApiKey} saveNeisApiKey={saveNeisApiKey} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings} saveTimetable={saveTimetable} previewNeisPublicTimetable={previewNeisPublicTimetable} findNeisSubjectCandidates={findNeisSubjectCandidates} publishNeisTimetableForMobile={publishNeisTimetableForMobile}/>}
         {page === "roster"    && <RosterView rosters={rosters} setRosters={setRosters} appendLog={appendLog} loadSetupData={loadSetupData} saveRosters={saveRosters} importRosterFile={importRosterFile}/>}
         {page === "connect"   && <ConnectionView driveUser={driveUser} reconnect={reconnect} reconnecting={reconnecting} loadSetupData={loadSetupData}/>}
