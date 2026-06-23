@@ -16,7 +16,7 @@ const summarizeMarks = (marks) => {
   const items = Object.entries(marks || {})
     .filter(([, mark]) => mark && mark !== "present")
     .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([number, mark]) => `${number}번 ${mark === "excused" ? "출석인정" : "결과"}`);
+    .map(([number, mark]) => `${number}번 ${mark === "excused" ? "인정결과" : "결과"}`);
   return items.length ? items.join(", ") : "저장하면 전원 출석";
 };
 
@@ -46,6 +46,13 @@ const formatDateSubtext = (isoDate) => {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 };
 
+/* Attendance mark config */
+const MARK_OPTIONS: Array<{ value: string; label: string; color: string }> = [
+  { value: "present", label: "출석",    color: "var(--green)" },
+  { value: "absent",  label: "결과",    color: "var(--red)" },
+  { value: "excused", label: "인정결과", color: "var(--orange)" },
+];
+
 /* Student-check sheet (modal) */
 const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendLog }) => {
   const students = rosters[slot.roster] || ROSTERS[slot.roster] || [];
@@ -69,11 +76,8 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
     setMarks(next);
   };
 
-  const toggle = (n) => {
-    const cur = marks[n] || "present";
-    const order = ["present", "absent", "excused"];
-    const next = order[(order.indexOf(cur) + 1) % order.length];
-    setMarks(m => ({ ...m, [n]: next }));
+  const setMark = (n, value) => {
+    setMarks(m => ({ ...m, [n]: value }));
   };
 
   const save = () => {
@@ -81,13 +85,13 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
     setSaveError("");
     Promise.resolve(onSaveMarks(slot.id, marks, counts))
       .then(() => {
-        appendLog("OK", `${slot.grade}-${slot.classNo} ${slot.subject} Drive 저장 완료 (결과 ${counts.absent}, 출석인정 ${counts.excused})`);
+        appendLog("완료", `${slot.grade}-${slot.classNo} ${slot.subject} 저장됨 (결과 ${counts.absent}, 인정결과 ${counts.excused})`);
         onClose();
       })
       .catch(err => {
         const message = err.message || String(err);
         setSaveError(message);
-        appendLog("ERR", `출결 저장 실패: ${message}`);
+        appendLog("오류", `출결 저장 실패: ${message}`);
       })
       .finally(() => setSaving(false));
   };
@@ -110,7 +114,7 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
             <Chip kind="info">총 {students.length}명</Chip>
             <Chip kind="ok">출석 {counts.present}</Chip>
             <Chip kind="bad">결과 {counts.absent}</Chip>
-            <Chip kind="warn">출석인정 {counts.excused}</Chip>
+            <Chip kind="warn">인정결과 {counts.excused}</Chip>
             <div style={{flex:1}}/>
             <button className="tb-btn ghost" onClick={() => setAll("present")}>
               <Icon name="check" size={14}/> 전원 출석
@@ -119,10 +123,10 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
 
           <div className="mark-legend">
             {[
-              ["all", "전체", "var(--fg-3)"],
-              ["present", "출석", "var(--green)"],
-              ["absent", "결과(/)", "var(--red)"],
-              ["excused", "출석인정(∅)", "var(--orange)"],
+              ["all",     "전체",    "var(--fg-3)"],
+              ["present", "출석",    "var(--green)"],
+              ["absent",  "결과",    "var(--red)"],
+              ["excused", "인정결과", "var(--orange)"],
             ].map(([v, l, c]) => (
               <button key={v} className={filter === v ? "on" : ""} onClick={() => setFilter(v)}>
                 <span className="dot" style={{background: c}}/>{l}
@@ -136,7 +140,7 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
           </div>
           {saveError && (
             <div className="save-summary-box error">
-              <strong>Drive 저장 실패</strong>
+              <strong>저장 실패</strong>
               <span>{saveError}</span>
             </div>
           )}
@@ -145,24 +149,50 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
             {filtered.map(s => {
               const m = marks[s.n] || "present";
               return (
-                <div key={s.n} className="stu-row" data-mark={m} onClick={() => toggle(s.n)}>
+                <div key={s.n} className="stu-row" data-mark={m} style={{cursor:"default"}}>
                   <span className="n">{s.n}</span>
                   <span className="nm">{s.name}</span>
-                  <span className="state">
-                    {m === "present" && <Icon name="check" size={12}/>}
-                    {m === "absent"  && <Icon name="x" size={12}/>}
-                    {m === "excused" && "∅"}
-                  </span>
+                  <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                    {MARK_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setMark(s.n, opt.value)}
+                        style={{
+                          border: m === opt.value ? `2px solid ${opt.color}` : "1.5px solid var(--sep)",
+                          background: m === opt.value ? `color-mix(in srgb, ${opt.color} 15%, var(--bg))` : "var(--bg)",
+                          color: m === opt.value ? opt.color : "var(--fg-3)",
+                          borderRadius: 8,
+                          padding: "3px 8px",
+                          fontSize: 12,
+                          fontWeight: m === opt.value ? 700 : 500,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          transition: "all .12s",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <span style={{
+                          width: 7, height: 7, borderRadius: "50%",
+                          background: opt.color,
+                          display: "inline-block",
+                          opacity: m === opt.value ? 1 : 0.4,
+                        }}/>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               );
             })}
           </div>
-          <p style={{fontSize:12,color:"var(--fg-3)",marginTop:14}}>학생 행을 눌러 출석 → 결과(/) → 출석인정(∅) 순서로 변경할 수 있어요.</p>
+          <p style={{fontSize:12,color:"var(--fg-3)",marginTop:14}}>각 학생의 출석/결과/인정결과를 눌러 정하세요.</p>
         </div>
         <div className="sheet-foot">
           <button className="tb-btn" onClick={onClose} disabled={saving}>취소</button>
           <button className="tb-btn primary" onClick={save} disabled={saving}>
-            <Icon name={saving ? "clock" : "check"} size={14}/> {saving ? "Drive 저장 중..." : "Drive에 저장"}
+            <Icon name={saving ? "clock" : "check"} size={14}/> {saving ? "저장 중…" : "저장"}
           </button>
         </div>
       </div>
@@ -186,7 +216,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
     return Promise.resolve(saveSlotAttendance(id, marks)).then((saved) => {
       const checkedAt = saved?.checkedAt || new Date().toISOString();
       setMarksById(m => ({ ...m, [id]: marks }));
-      setSlots(prev => prev.map(s => s.id === id ? { ...s, checked: true, absences: absCount, checkedAt, marks, note: absCount ? `결과·출석인정 ${absCount}명` : "전원 출석" } : s));
+      setSlots(prev => prev.map(s => s.id === id ? { ...s, checked: true, absences: absCount, checkedAt, marks, note: absCount ? `결과·인정결과 ${absCount}명` : "전원 출석" } : s));
     });
   };
 
@@ -194,7 +224,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
     <>
       <div className="topbar">
         <Icon name="bolt" size={16}/>
-        <span className="title">실행</span>
+        <span className="title">오늘 출결</span>
         <span className="sub">· 선택한 날짜의 수업을 확인하고 NEIS에 반영합니다</span>
         <div className="topbar-actions">
           <button className="tb-btn" onClick={() => {
@@ -209,7 +239,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
             <Icon name={slotLoading ? "clock" : "refresh"} size={14}/> {slotLoading ? "불러오는 중" : "새로고침"}
           </button>
           <span className="divider"/>
-          <Checkbox checked={closeAfter} onChange={setCloseAfter} label="출결마감까지"/>
+          <Checkbox checked={closeAfter} onChange={setCloseAfter} label="처리 후 출결 마감까지 함"/>
           <button className="run-cta" onClick={startRun} disabled={running || pending === 0}>
             {running
               ? <><Icon name="clock" size={16}/> 반영 중… {progress.done}/{progress.total}</>
@@ -224,7 +254,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
         <div className="page-hero">
           <div>
             <h1>{formatDateHeading(date)}</h1>
-            <div className="subtitle">{date} · Drive에서 확인한 출결을 NEIS 과목별 출결관리에 그대로 반영합니다.</div>
+            <div className="subtitle">{date} · 확인한 출결을 NEIS에 그대로 반영합니다.</div>
           </div>
           <div className="hero-actions date-actions">
             <button className="tb-btn" onClick={() => setDate(addDays(date, -1))}><Icon name="chev-l" size={14}/> 이전날</button>
@@ -235,7 +265,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
               <input className="input" type="date" value={date} onChange={e => setDate(e.target.value || todayIso())} />
             </div>
             <div className="field" style={{width:200}}>
-              <label>교사 인증서 비밀번호</label>
+              <label>NEIS 인증서 비밀번호</label>
               <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"/>
             </div>
           </div>
@@ -273,15 +303,10 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
         )}
 
         <div className="stat-grid" style={{marginTop:16}}>
-          <div className="stat-card success">
-            <div className="label"><span className="dot" style={{background:"var(--green)"}}/>연결 상태</div>
-            <div className="value">연결됨</div>
-            <div className="note ok">Google Drive · appDataFolder</div>
-          </div>
           <div className="stat-card accent">
             <div className="label"><span className="dot"/>해당 날짜 수업</div>
             <div className="value">{total}<span className="unit">건</span></div>
-            <div className="note">{formatDateSubtext(date)} · 체크 완료 {checked} / 체크 대기 {total - checked}</div>
+            <div className="note">{formatDateSubtext(date)} · 출결 확인 {checked} / 아직 확인 안 함 {total - checked}</div>
           </div>
           <div className="stat-card">
             <div className="label"><span className="dot" style={{background:"var(--orange)"}}/>NEIS 반영</div>
@@ -289,7 +314,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
             <div className="note warn">{pending > 0 ? `미반영 ${pending}건` : "모두 반영됨"}</div>
           </div>
           <div className="stat-card">
-            <div className="label"><span className="dot" style={{background:"var(--red)"}}/>결과·출석인정</div>
+            <div className="label"><span className="dot" style={{background:"var(--red)"}}/>결과·인정결과</div>
             <div className="value">{absent}<span className="unit">명</span></div>
             <div className="note">해당 날짜 기준 누계</div>
           </div>
@@ -301,22 +326,15 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
               <h2>해당 날짜 수업</h2>
               <div className="desc">카드를 누르면 학생별 출결을 확인하고 바로 수정할 수 있어요.</div>
             </div>
-            <div className="section-head-actions">
-              <Segmented value="all" onChange={()=>{}} options={[
-                {value:"all", label:"전체"},
-                {value:"pending", label:`미반영 ${pending}`},
-                {value:"done", label:"반영됨"},
-              ]}/>
-            </div>
           </div>
 
           <div className="list-group">
             <div className="list-header" style={{gridTemplateColumns:"80px 1.6fr 80px 80px 130px 1fr auto"}}>
               <div>교시</div>
-              <div>과목 · NEIS 표시명</div>
+              <div>과목</div>
               <div>학년</div>
               <div>반</div>
-              <div>체크</div>
+              <div>출결 확인</div>
               <div>상태</div>
               <div></div>
             </div>
@@ -334,20 +352,19 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
                 </div>
                 <div className="subject">
                   {s.subject}
-                  <div className="sub2">NEIS: {s.neisLabel} · {s.room} · {s.time}</div>
+                  <div className="sub2">{s.room} · {s.time}</div>
                 </div>
                 <div className="klass">{s.grade}</div>
                 <div className="klass">{s.classNo}</div>
                 <div>
                   {s.checked
                     ? <>
-                        <Chip kind="ok"><Icon name="check" size={11}/> 완료 · 표시 {s.absences}</Chip>
+                        <Chip kind="ok"><Icon name="check" size={11}/> 확인함 · {s.absences}명</Chip>
                         {s.checkedAt && <div className="sub2">{formatSavedAt(s.checkedAt)}</div>}
                       </>
-                    : <Chip kind="gray">체크 대기</Chip>}
+                    : <Chip kind="gray">아직 확인 안 함</Chip>}
                 </div>
                 <div className="status-stack">
-                  {s.checked && <Chip kind="ok"><Icon name="check" size={11}/> Drive 저장 완료</Chip>}
                   <StatusChip item={s}/>
                 </div>
                 <div className="chev"><Icon name="chev-r" size={16}/></div>
@@ -371,4 +388,3 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
     </>
   );
 };
-

@@ -265,7 +265,7 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 
 /* Stat cards */
 .stat-grid {
-  display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
 }
 [data-density="compact"] .stat-grid { gap: 10px; }
@@ -771,16 +771,16 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 
 .stu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 6px;
 }
 .stu-row {
-  display: grid; grid-template-columns: 30px 1fr 22px;
+  display: grid; grid-template-columns: 30px 1fr auto;
   gap: 8px; align-items: center;
   padding: 8px 12px;
   border-radius: 10px;
   background: var(--bg);
-  cursor: pointer; user-select: none;
+  user-select: none;
   border: 1px solid transparent;
   transition: background .12s, border-color .12s;
 }
