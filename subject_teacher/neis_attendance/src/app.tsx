@@ -466,7 +466,7 @@ function App() {
         {page === "roster"    && <RosterView rosters={rosters} setRosters={setRosters} appendLog={appendLog} loadSetupData={loadSetupData} saveRosters={saveRosters} importRosterFile={importRosterFile}/>}
       </main>
 
-      {logOpen && <LogDock lines={logLines} collapsed={false} setCollapsed={(v: boolean) => { if (v) setLogOpen(false); }} clear={clearLog}/>}
+      {logOpen && <LogDock lines={logLines} onClose={() => setLogOpen(false)} clear={clearLog}/>}
     </div>
   );
 }
