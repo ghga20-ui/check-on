@@ -140,6 +140,32 @@ return null;
 """
 
 
+_FIND_MARKED_JS = r"""
+const isVisible = (el) => {
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  const s = window.getComputedStyle(el);
+  return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
+};
+const out = [];
+for (const row of Array.from(document.querySelectorAll("[role='row'], .cl-grid-row")).filter(isVisible)) {
+  const numCell = row.querySelector("[data-cellindex='4']");
+  const sc = row.querySelector("[data-cellindex='7']");
+  if (!numCell || !sc) continue;
+  const n = (numCell.innerText || numCell.textContent || '').replace(/\s+/g,' ').trim();
+  if (!/^\d+$/.test(n)) continue;
+  const vals = [sc.getAttribute('aria-label') || '', sc.getAttribute('title') || ''];
+  sc.querySelectorAll('*').forEach((d) => { const t = d.getAttribute('title'); if (t) vals.push(t); });
+  const inp = sc.querySelector('input,textarea'); if (inp) vals.push(inp.value || '');
+  const j = vals.join(' ');
+  if (j.includes('/') || j.includes('Ø')) {
+    out.push({ number: Number(n), info: j.replace(/\s+/g,' ').trim().slice(0, 60) });
+  }
+}
+return out;
+"""
+
+
 def _stage(results, name, fn):
     """Run one stage, record (name, ok, elapsed, detail), print a line."""
     start = time.time()
@@ -216,6 +242,8 @@ def main() -> int:
                         help="DANGER: actually mark --mark absences and click 저장 (writes real data)")
     parser.add_argument("--close", action="store_true",
                         help="DANGER: actually click 출결마감 (LOCKS the class)")
+    parser.add_argument("--probe-skip", action="store_true",
+                        help="READ-ONLY: find a pre-marked (/, Ø) student and verify click_attendance_cell skips them (no save)")
     parser.add_argument("--runner", action="store_true",
                         help="use the real process_day() production flow for --mark slots (search/reset/verify/save[/close])")
     parser.add_argument("--diagnose-write", action="store_true",
@@ -247,6 +275,33 @@ def main() -> int:
     driver = create_driver(keep_browser_open=True)
     try:
         if not _stage(results, "login", lambda: utils.open_neis_direct(driver, args.password)):
+            return _summary(results)
+
+        if args.probe_skip:
+            period, grade, class_no, subject = slots[0]
+            sc.open_subject_attendance_page(driver, year, args.term)
+            sc.select_day_mode(driver)
+            sc.select_date(driver, args.date)
+            sc.click_search(driver)
+            sc.select_period(driver, period, subject, grade, class_no)
+            marked = driver.execute_script(_FIND_MARKED_JS)
+            print(f"   pre-marked students in {grade}-{class_no} p{period}: {marked}")
+            if not marked:
+                print("   no pre-marked (/ or Ø) student found — cannot test skip here")
+                return _summary(results)
+            num = marked[0]["number"]
+            before = driver.execute_script(_TITLE_JS, num)
+            ret = sc.click_attendance_cell(driver, num, expected_mark="absent")
+            after = driver.execute_script(_TITLE_JS, num)
+            print(f"   click_attendance_cell(#{num}) returned: {ret}  (expect False = skipped)")
+            print(f"   title before: {before}")
+            print(f"   title after : {after}")
+            unchanged = before == after
+            ok = (ret is False) and unchanged
+            results.append((f"skip_preserves[{grade}-{class_no}#{num}]", ok, 0.0,
+                            f"ret={ret} unchanged={unchanged}"))
+            print(f"  [{'PASS' if ok else 'FAIL'}] skip_preserves #{num}  ret={ret} unchanged={unchanged}")
+            # no save — nothing written
             return _summary(results)
 
         if args.diagnose_write:
