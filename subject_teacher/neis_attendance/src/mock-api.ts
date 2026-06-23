@@ -46,6 +46,7 @@ export function createMockApi(): DesktopApi {
     get_neis_api_key: () => Promise.resolve(""),
     save_neis_api_key: () => ok({ ok: true }),
     get_password: () => Promise.resolve(""),
+    save_password: () => Promise.resolve(),
     import_students_file: (classKey) => ok({ classKey, students: [] }),
     preview_neis_public_timetable: () => ok({ school: { name: "Demo High School" }, lessons: [] }),
     publish_neis_timetable_for_week: () => ok({ ok: true, count: 0, effectiveFrom: "2026-04-20" }),

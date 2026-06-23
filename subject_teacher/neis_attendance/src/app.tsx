@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "./components";
 import { LogDock } from "./log-panel";
 import { RunView } from "./run-view";
-import { BasicsView, TimetableView, RosterView, DriveView, AuthView, PlaceholderView, ConnectionView } from "./setup-view";
+import { BasicsView, TimetableView, RosterView, PlaceholderView, ConnectionView } from "./setup-view";
 import { TweaksPanel, useTweaks, TweakSection, TweakRadio, TweakToggle, TweakSlider, TweakColor, TweakSelect } from "./tweaks-panel";
 import { TODAY_SLOTS, TIMETABLE, ROSTERS } from "./data";
 import {
@@ -227,6 +227,11 @@ function App() {
       .catch(err => appendLog("오류", `NEIS Open API 키 저장 실패: ${formatApiError(err)}`));
   };
 
+  const savePassword = (pw: string) => {
+    if (!(window.__isPywebview && window.__isPywebview())) return;
+    window.pywebview!.api.save_password(pw).catch(() => {});
+  };
+
   const publishNeisTimetableForMobile = (dateStr = toIsoDate(date), options: { force?: boolean; once?: boolean; silent?: boolean } = {}) => {
     const targetDate = toIsoDate(dateStr);
     const weekKey = weekKeyFromIsoDate(targetDate);
@@ -447,6 +452,7 @@ function App() {
         ))}
 
         <button className="sb-loglink" onClick={() => setLogOpen(o => !o)}>진행 기록</button>
+        <button className="sb-loglink" onClick={loadSetupData}>설정 다시 불러오기</button>
 
         <div className="sb-foot">
           <div className="avatar">{sidebarInitial}</div>
@@ -461,7 +467,7 @@ function App() {
       </aside>
 
       <main className="main">
-        {page === "run"       && <RunView {...{date,setDate,password,setPassword,closeAfter,setCloseAfter,slots,setSlots,rosters,running,progress,runLog:logLines,startRun,saveSlotAttendance,appendLog,refreshSlots,publishNeisTimetableForMobile,slotLoading,slotError}}/>}
+        {page === "run"       && <RunView {...{date,setDate,password,setPassword,savePassword,closeAfter,setCloseAfter,slots,setSlots,rosters,running,progress,runLog:logLines,startRun,saveSlotAttendance,appendLog,refreshSlots,publishNeisTimetableForMobile,slotLoading,slotError}}/>}
         {page === "basics"    && <BasicsView settings={settings} setSettings={setSettings} driveUser={driveUser} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings}/>}
         {page === "timetable" && <TimetableView rows={timetable} setRows={setTimetable} settings={settings} setSettings={setSettings} neisApiKey={neisApiKey} setNeisApiKey={setNeisApiKey} saveNeisApiKey={saveNeisApiKey} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings} saveTimetable={saveTimetable} previewNeisPublicTimetable={previewNeisPublicTimetable} findNeisSubjectCandidates={findNeisSubjectCandidates} publishNeisTimetableForMobile={publishNeisTimetableForMobile}/>}
         {page === "roster"    && <RosterView rosters={rosters} setRosters={setRosters} appendLog={appendLog} loadSetupData={loadSetupData} saveRosters={saveRosters} importRosterFile={importRosterFile}/>}

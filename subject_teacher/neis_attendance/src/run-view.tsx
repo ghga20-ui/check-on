@@ -200,7 +200,7 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
   );
 };
 
-export const RunView = ({ date, setDate, password, setPassword, closeAfter, setCloseAfter,
+export const RunView = ({ date, setDate, password, setPassword, savePassword, closeAfter, setCloseAfter,
                    slots, setSlots, rosters, running, progress, runLog, startRun, saveSlotAttendance, appendLog, refreshSlots, publishNeisTimetableForMobile, slotLoading, slotError }) => {
   const [openSlot, setOpenSlot] = useState<any>(null);
   const [marksById, setMarksById] = useState<any>({});
@@ -228,13 +228,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
         <span className="sub">· 선택한 날짜의 수업을 확인하고 NEIS에 반영합니다</span>
         <div className="topbar-actions">
           <button className="tb-btn" onClick={() => {
-            const publish = publishNeisTimetableForMobile
-              ? publishNeisTimetableForMobile(date, { force: true, silent: true })
-              : Promise.resolve();
-            Promise.resolve(publish).then(() => {
-              if (refreshSlots) return refreshSlots(date);
-              return null;
-            });
+            if (refreshSlots) refreshSlots(date);
           }} disabled={slotLoading}>
             <Icon name={slotLoading ? "clock" : "refresh"} size={14}/> {slotLoading ? "불러오는 중" : "새로고침"}
           </button>
@@ -257,7 +251,7 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
             </div>
             <div className="field" style={{width:200}}>
               <label>NEIS 인증서 비밀번호</label>
-              <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"/>
+              <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} onBlur={() => savePassword && savePassword(password)} placeholder="••••••••"/>
             </div>
           </div>
         </div>

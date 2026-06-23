@@ -13,6 +13,7 @@ export interface DesktopApi {
   get_neis_api_key(): Promise<string>;
   save_neis_api_key(apiKey: string): Promise<string>;
   get_password(): Promise<string>;
+  save_password(pw: string): Promise<void>;
   import_students_file(classKey: string): Promise<string>;
   preview_neis_public_timetable(payloadJson: string): Promise<string>;
   publish_neis_timetable_for_week(dateStr: string): Promise<string>;

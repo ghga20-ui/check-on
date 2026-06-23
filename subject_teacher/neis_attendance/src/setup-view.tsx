@@ -1,5 +1,5 @@
 import React from "react";
-import { Icon, Toggle, Segmented, PillTabs, Banner, EmptyState, Chip, Checkbox } from "./components";
+import { Icon, Toggle, Segmented, PillTabs, EmptyState, Chip, Checkbox } from "./components";
 import { TIMETABLE, ROSTERS } from "./data";
 const { useState, useMemo, useEffect } = React;
 
@@ -10,13 +10,6 @@ const todayIso = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const accountLabel = (driveUser) => {
-  if (!driveUser?.emailAddress) return "계정 확인 전";
-  return driveUser.displayName
-    ? `${driveUser.displayName} · ${driveUser.emailAddress}`
-    : driveUser.emailAddress;
-};
-
 export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSetupData, saveSettings }) => {
   return (
     <>
@@ -24,7 +17,6 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
         <Icon name="gear" size={16}/>
         <span className="title">기본 정보</span>
         <div className="topbar-actions">
-          <button className="tb-btn" onClick={loadSetupData}><Icon name="cloud" size={14}/> 불러오기</button>
           <button className="tb-btn primary" onClick={saveSettings}>
             <Icon name="check" size={14}/> 저장
           </button>
@@ -95,28 +87,11 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
 export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey, setNeisApiKey, saveNeisApiKey, appendLog, loadSetupData, saveSettings, saveTimetable, previewNeisPublicTimetable, findNeisSubjectCandidates, publishNeisTimetableForMobile }) => {
   const [selected, setSelected] = useState<any>(new Set());
   const [day, setDay] = useState<any>("전체");
-  const [importForm, setImportForm] = useState<any>({
-    schoolName: settings?.schoolName || "",
-    date: todayIso(),
-    grade: 2,
-    classNo: "1",
-    apiKey: "",
-  });
-  const [preview, setPreview] = useState<any>(null);
-  const [previewSelected, setPreviewSelected] = useState<any>(new Set());
-  const [previewLoading, setPreviewLoading] = useState<any>(false);
-  const [previewError, setPreviewError] = useState<any>("");
   const [subjectLookup, setSubjectLookup] = useState<any>({ index: null, loading: false, error: "", lessons: [] });
 
   const filtered = rows.map((r, i) => ({...r, _i: i})).filter(r => day === "전체" || r.day === day);
   const assignedLessons = settings?.assignedLessons || [];
   const isNeisMode = (settings?.timetableMode || "neis") === "neis";
-
-  useEffect(() => {
-    if (!importForm.schoolName && settings?.schoolName) {
-      setImportForm(form => ({ ...form, schoolName: settings.schoolName }));
-    }
-  }, [settings?.schoolName]);
 
   const addRow = () => {
     const targetDay = day === "전체" ? "월" : day;
@@ -202,69 +177,6 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
     Promise.resolve(saveSettings(`담당 수업 ${validLessons.length}건 저장 완료`))
       .then(() => publishNeisTimetableForMobile && publishNeisTimetableForMobile(undefined, { force: true }));
   };
-  const fetchPreview = () => {
-    setPreviewLoading(true);
-    setPreviewError("");
-    setPreview(null);
-    setPreviewSelected(new Set());
-    previewNeisPublicTimetable({
-      region: settings?.region,
-      schoolName: importForm.schoolName,
-      date: importForm.date,
-      grade: importForm.grade,
-      classNo: importForm.classNo,
-      apiKey: importForm.apiKey,
-    })
-      .then(data => {
-        setPreview(data);
-        setPreviewSelected(new Set((data.lessons || []).map((_, index) => index)));
-        appendLog("OK", `NEIS 공개 API 시간표 후보 ${(data.lessons || []).length}건 조회`);
-      })
-      .catch(err => {
-        const message = err.message || String(err);
-        setPreviewError(message);
-        appendLog("ERR", `NEIS 공개 API 시간표 조회 실패: ${message}`);
-      })
-      .finally(() => setPreviewLoading(false));
-  };
-  const applyPreview = () => {
-    const lessons = (preview?.lessons || []).filter((_, index) => previewSelected.has(index));
-    if (!lessons.length) {
-      appendLog("WARN", "반영할 시간표 후보를 선택해 주세요");
-      return;
-    }
-    let next = [...rows];
-    lessons.forEach(lesson => {
-      const normalized = {
-        day: lesson.day,
-        period: Number(lesson.period),
-        grade: Number(lesson.grade),
-        classNo: String(lesson.classNo),
-        subject: lesson.subject,
-        neis: lesson.neis || lesson.subject,
-      };
-      const existingIndex = next.findIndex(row =>
-        row.day === normalized.day &&
-        Number(row.period) === normalized.period &&
-        Number(row.grade) === normalized.grade &&
-        String(row.classNo) === normalized.classNo
-      );
-      if (existingIndex >= 0) {
-        next[existingIndex] = { ...next[existingIndex], ...normalized };
-      } else {
-        next.push(normalized);
-      }
-    });
-    setRows(next);
-    setDay(lessons[0].day || "전체");
-    appendLog("OK", `시간표 후보 ${lessons.length}건 반영`);
-  };
-  const togglePreview = (index) => {
-    const next = new Set(previewSelected);
-    next.has(index) ? next.delete(index) : next.add(index);
-    setPreviewSelected(next);
-  };
-
   return (
     <>
       <div className="topbar">
@@ -272,7 +184,6 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
         <span className="title">시간표</span>
         <span className="sub">· {rows.length}개 수업</span>
         <div className="topbar-actions">
-          <button className="tb-btn" onClick={loadSetupData}><Icon name="cloud" size={14}/> Drive에서 불러오기</button>
           {!isNeisMode && <button className="tb-btn" onClick={addRow}><Icon name="plus" size={14}/> 행 추가</button>}
           {selected.size > 0 && (
             <button className="tb-btn" onClick={removeSelected}><Icon name="trash" size={14}/> 선택 삭제 ({selected.size})</button>
@@ -368,70 +279,6 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
           </div>
         )}
 
-        {!isNeisMode && false && <div className="card card-pad neis-import">
-          <div className="section-head" style={{marginBottom:12}}>
-            <div>
-              <h2>NEIS 공개 API에서 가져오기</h2>
-              <div className="desc">학교·학년·반·날짜 기준 시간표를 조회한 뒤 내 수업만 선택해서 반영합니다.</div>
-            </div>
-            <button className="tb-btn primary" onClick={fetchPreview} disabled={previewLoading}>
-              <Icon name={previewLoading ? "clock" : "cloud"} size={14}/> {previewLoading ? "조회 중..." : "후보 조회"}
-            </button>
-          </div>
-          <div className="neis-import-grid">
-            <div className="field">
-              <label>학교명</label>
-              <input className="input" value={importForm.schoolName} onChange={e => setImportForm({...importForm, schoolName: e.target.value})} placeholder="예: 수원고등학교"/>
-            </div>
-            <div className="field">
-              <label>날짜</label>
-              <input className="input" type="date" value={importForm.date} onChange={e => setImportForm({...importForm, date: e.target.value})}/>
-            </div>
-            <div className="field">
-              <label>학년</label>
-              <select className="select" value={importForm.grade} onChange={e => setImportForm({...importForm, grade: +e.target.value})}>
-                {[1,2,3].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>반</label>
-              <input className="input" value={importForm.classNo} onChange={e => setImportForm({...importForm, classNo: e.target.value})}/>
-            </div>
-            <div className="field">
-              <label>API 키</label>
-              <input className="input" value={importForm.apiKey} onChange={e => setImportForm({...importForm, apiKey: e.target.value})} placeholder="선택 · 없으면 일부만 조회될 수 있음"/>
-            </div>
-          </div>
-          {previewError && <div className="inline-error">{previewError}</div>}
-          {preview && (
-            <div className="neis-preview">
-              <div className="neis-preview-head">
-                <strong>{preview.school?.name || importForm.schoolName}</strong>
-                <span>{preview.date} · 후보 {(preview.lessons || []).length}건</span>
-                <button className="tb-btn" onClick={applyPreview}>
-                  <Icon name="check" size={14}/> 선택 반영 ({previewSelected.size})
-                </button>
-              </div>
-              {(preview.lessons || []).length === 0 ? (
-                <div className="desc">조회된 시간표가 없습니다. 날짜, 학년, 반을 확인하세요.</div>
-              ) : (
-                <div className="neis-preview-list">
-                  {preview.lessons.map((lesson, index) => (
-                    <button key={`${lesson.period}-${lesson.subject}-${index}`} className="neis-preview-row" onClick={() => togglePreview(index)}>
-                      <span className={`cbx-box ${previewSelected.has(index) ? "on" : ""}`}>
-                        {previewSelected.has(index) && <Icon name="check" size={12} stroke={2.4}/>}
-                      </span>
-                      <span>{lesson.day}</span>
-                      <strong>{lesson.period}교시</strong>
-                      <span>{lesson.grade}-{lesson.classNo}</span>
-                      <span>{lesson.subject}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>}
 
         {!isNeisMode && <div className="list-group manual-timetable-list" style={{overflow:"hidden"}}>
           <div className="tt-grid head">
@@ -532,7 +379,6 @@ export const RosterView = ({ rosters, setRosters, appendLog, loadSetupData, save
         <span className="title">학생 명부</span>
         <span className="sub">· {keys.length}개 학급 · 선택 학급 {list.length}명</span>
         <div className="topbar-actions">
-          <button className="tb-btn" onClick={loadSetupData}><Icon name="cloud" size={14}/> Drive에서 불러오기</button>
           <button className="tb-btn" onClick={() => importRosterFile(klass)} disabled={!klass}>
             <Icon name="upload" size={14}/> CSV/XLSX 가져오기
           </button>
@@ -599,67 +445,6 @@ export const RosterView = ({ rosters, setRosters, appendLog, loadSetupData, save
     </>
   );
 };
-
-export const DriveView = ({ appendLog, driveUser, loadSetupData }) => (
-  <>
-    <div className="topbar">
-      <Icon name="cloud" size={16}/>
-      <span className="title">Google Drive</span>
-      <div className="topbar-actions">
-        <button className="tb-btn" onClick={loadSetupData}><Icon name="refresh" size={14}/> 연결 확인</button>
-      </div>
-    </div>
-    <div className="content">
-      <div className="page-hero">
-        <div><h1>Google Drive</h1><div className="subtitle">이 앱 전용 비공개 영역에 저장된 설정·시간표·학생 명부를 관리합니다.</div></div>
-      </div>
-      <Banner kind="info" icon="info" title="이 앱 전용 비공개 저장 공간 — 다른 사람이 Google Drive에서 볼 수 없습니다">
-        현재 연결 계정: {accountLabel(driveUser)}
-      </Banner>
-      <div className="list-group" style={{marginTop:16}}>
-        {[
-          {name:"settings.json", size:"412 B", ts:"2026.04.18 09:12", icon:"gear"},
-          {name:"timetable.json", size:"2.1 KB", ts:"2026.04.18 09:12", icon:"board"},
-          {name:"students.json",  size:"5.3 KB", ts:"2026.04.18 09:12", icon:"users"},
-        ].map(f => (
-          <div key={f.name} className="list-row" style={{gridTemplateColumns:"auto 1fr auto auto auto"}}>
-            <div className="period"><span className="p-num" style={{background:"var(--accent-soft)",color:"var(--accent)"}}><Icon name={f.icon} size={14}/></span></div>
-            <div className="subject">{f.name}<div className="sub2">앱 전용 저장소</div></div>
-            <div className="klass">{f.size}</div>
-            <div className="klass">{f.ts}</div>
-            <button className="tb-btn ghost" onClick={() => appendLog("INFO", `${f.name} 다운로드`)}>다운로드</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  </>
-);
-
-export const AuthView = ({ appendLog, driveUser, loadSetupData }) => (
-  <>
-    <div className="topbar">
-      <Icon name="key" size={16}/>
-      <span className="title">Google 계정 연결</span>
-    </div>
-    <div className="content">
-      <div className="page-hero"><div><h1>Google 계정 연결</h1><div className="subtitle">이 앱이 Google Drive에 파일을 저장하려면 계정 연결이 필요합니다.</div></div></div>
-      <div className="card card-pad">
-        <div style={{display:"flex",alignItems:"center",gap:14}}>
-          <div style={{width:44,height:44,borderRadius:12,background:"var(--accent-soft)",display:"grid",placeItems:"center",color:"var(--accent)"}}>
-            <Icon name="lock" size={22}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:600}}>{accountLabel(driveUser)}</div>
-            <div style={{fontSize:13,color:"var(--fg-3)"}}>Drive 파일 저장 권한</div>
-          </div>
-          <button className="tb-btn primary" onClick={loadSetupData}>
-            <Icon name="refresh" size={14}/> 계정 확인
-          </button>
-        </div>
-      </div>
-    </div>
-  </>
-);
 
 export const PlaceholderView = ({ title, icon, body }) => (
   <>
