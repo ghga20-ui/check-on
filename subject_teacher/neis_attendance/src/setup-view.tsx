@@ -286,14 +286,16 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
               <button className="tb-btn" onClick={saveNeisApiKey}><Icon name="check" size={14}/> API 키 저장</button>
             </div>
             <div className="mode-help">
-              담당 수업 추가 후 학년·반·과목명을 입력하고 상단의 담당 수업 저장을 누르면 Drive settings.json에 저장됩니다. 실행 화면은 선택한 날짜 기준으로 NEIS 시간표를 다시 조회합니다.
+              내가 가르치는 학년·반·과목을 추가하고 위의 ‘담당 수업 저장’을 누르세요. ‘오늘 출결’ 화면이 선택한 날짜의 NEIS 시간표에서 그 수업을 자동으로 찾아 줍니다.
             </div>
             <div className="assigned-list">
               {assignedLessons.length === 0 ? (
                 <EmptyState icon="board" title="담당 수업이 없어요" body="학년, 반, 과목을 추가하면 선택 날짜 기준으로 NEIS 시간표에서 자동 조회합니다."/>
               ) : assignedLessons.map((lesson, index) => {
+                const labelDiffers = Boolean(String(lesson.neisSubjectLabel || "").trim())
+                  && String(lesson.neisSubjectLabel || "").trim() !== String(lesson.subjectName || "").trim();
                 const advOpen = advancedRows.has(index)
-                  || Boolean(String(lesson.neisSubjectLabel || "").trim())
+                  || labelDiffers
                   || Boolean((lesson.subjectAliases || []).length);
                 return (
                 <React.Fragment key={index}>
