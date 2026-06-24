@@ -21,6 +21,7 @@ import {
 } from "./lib/offlineQueue";
 import type { SlotAttendance, StudentEntry, TimetableSlot } from "./lib/schemas";
 import { sampleRosters, sampleSlots } from "./sampleData";
+import { PrivacyPolicy } from "./PrivacyPolicy";
 
 type AttendanceByDate = Record<string, Record<string, SlotAttendance>>;
 type RostersByClass = Record<string, StudentEntry[]>;
@@ -121,6 +122,7 @@ export default function App({
     () => (typeof navigator === "undefined" ? true : navigator.onLine),
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const toastTimer = useRef<number | null>(null);
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -441,6 +443,7 @@ export default function App({
           <section className="info-card">
             <strong>개인정보</strong>
             <p>학생 이름은 저장하지 않습니다. 학번·출결만 본인 Google Drive에 저장되며 외부 서버로 전송되지 않습니다.</p>
+            <button className="policy-link" type="button" onClick={() => setShowPrivacy(true)}>개인정보처리방침 전문 보기</button>
           </section>
         </main>
       )}
@@ -539,6 +542,7 @@ export default function App({
         </div>
       )}
 
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );

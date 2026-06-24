@@ -189,6 +189,14 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.01
 .ob-note p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--fg-2, #444); }
 .ob-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* 개인정보처리방침 본문 */
+.policy-body { margin: 4px 0 16px; }
+.policy-body p { font-size: 13.5px; line-height: 1.6; color: var(--fg-2, #333); margin: 0 0 12px; }
+.policy-body h3 { font-size: 14.5px; margin: 16px 0 6px; }
+.policy-body ul { margin: 0 0 12px; padding-left: 18px; }
+.policy-body li { font-size: 13.5px; line-height: 1.55; margin-bottom: 4px; color: var(--fg-2, #333); }
+.policy-body .policy-note { color: var(--fg-3, #6b6b70); font-size: 12.5px; margin-top: 16px; }
+
 /* 보강(임시) 수업 추가 폼 */
 .bogang-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
 .bogang-form .field { display: flex; flex-direction: column; gap: 5px; }

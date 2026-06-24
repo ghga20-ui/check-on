@@ -660,3 +660,28 @@ button:focus:not(:focus-visible) { outline: none; }
   font-weight: 700;
   box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
 }
+
+/* Privacy policy */
+.policy-link {
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 0;
+}
+.policy-panel { max-height: 88vh; }
+.policy-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+.policy-body p { font-size: 14px; line-height: 1.6; color: var(--fg); margin: 0 0 12px; }
+.policy-body h3 { font-size: 15px; margin: 18px 0 6px; }
+.policy-body ul { margin: 0 0 12px; padding-left: 18px; }
+.policy-body li { font-size: 14px; line-height: 1.55; margin-bottom: 4px; }
+.policy-body .policy-note { color: var(--muted); font-size: 12.5px; margin-top: 16px; }

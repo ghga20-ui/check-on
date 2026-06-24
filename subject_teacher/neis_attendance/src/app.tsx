@@ -4,6 +4,7 @@ import { LogDock } from "./log-panel";
 import { RunView } from "./run-view";
 import { BasicsView, TimetableView, RosterView, PlaceholderView, ConnectionView } from "./setup-view";
 import { OnboardingGuide } from "./onboarding";
+import { PrivacyPolicy } from "./privacy-policy";
 import { TweaksPanel, useTweaks, TweakSection, TweakRadio, TweakToggle, TweakSlider, TweakColor, TweakSelect } from "./tweaks-panel";
 import { TODAY_SLOTS, TIMETABLE, ROSTERS } from "./data";
 import {
@@ -57,6 +58,7 @@ function App() {
     try { localStorage.setItem("onboardingSeen", "1"); } catch {}
     setShowOnboarding(false);
   };
+  const [showPrivacy, setShowPrivacy] = useState<any>(false);
   const [logLines, setLogLines] = useState<any>([
     { ts: "09:02:14", lv: "안내", msg: "앱 실행 — subject_teacher v0.4.1" },
     { ts: "09:02:14", lv: "완료", msg: "Google Drive 연결 · 3개 파일 감지" },
@@ -512,6 +514,7 @@ function App() {
         ))}
 
         <button className="sb-loglink" onClick={() => setShowOnboarding(true)}>시작 가이드</button>
+        <button className="sb-loglink" onClick={() => setShowPrivacy(true)}>개인정보처리방침</button>
         <button className="sb-loglink" onClick={() => setLogOpen(o => !o)}>진행 기록</button>
         <button className="sb-loglink" onClick={loadSetupData}>설정 다시 불러오기</button>
 
@@ -548,6 +551,7 @@ function App() {
           onClose={closeOnboarding}
         />
       )}
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
       {toast && (
         <div className={`app-toast ${toast.lv === "오류" ? "err" : "ok"}`} role="status">{toast.msg}</div>
       )}
