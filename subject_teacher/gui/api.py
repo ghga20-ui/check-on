@@ -887,6 +887,9 @@ class Api:
                 self._push_log("OK", f"실행 완료 — {total}건 처리됨")
             except Exception as exc:
                 logger.exception("start_run worker failed")
+                # Some slots may have been written before the failure; drop the
+                # cache so a refresh reflects whatever did get reflected.
+                self._clear_slot_cache(date_str)
                 self._push_log("ERR", f"실행 오류: {exc}")
                 self._push_progress(0, 0, "", "error")
 

@@ -355,6 +355,12 @@ function App() {
       });
   };
 
+  // Keep the latest refreshSlots/date for the once-registered bridge callback.
+  const refreshSlotsRef = React.useRef(refreshSlots);
+  refreshSlotsRef.current = refreshSlots;
+  const dateRef = React.useRef(date);
+  dateRef.current = date;
+
   /* Bridge: Python → React 로그/진행상황 수신 */
   useEffect(() => {
     if (typeof window.__registerBridge === "function") {
@@ -362,7 +368,12 @@ function App() {
         (entry) => setLogLines(l => [...l, { ts: now(), lv: entry.lv, msg: entry.msg }]),
         (p) => {
           setProgress({ done: p.done, total: p.total, current: p.current, state: p.state });
-          if (p.state === "done" || p.state === "error") setRunning(false);
+          if (p.state === "done" || p.state === "error") {
+            setRunning(false);
+            // Re-read slots so 반영됨 status reflects what was just written to NEIS.
+            // (start_run clears the server cache before signalling done/error.)
+            refreshSlotsRef.current(toIsoDate(dateRef.current));
+          }
         }
       );
     }
