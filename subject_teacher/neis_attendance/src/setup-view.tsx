@@ -131,7 +131,7 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
             </div><div/>
           </div>
           <div className="form-row">
-            <div><div className="rlabel">출결마감 자동 실행</div><div className="rhint">오늘 출결 화면의 기본값이 돼요.</div></div>
+            <div><div className="rlabel">출결마감 자동 실행</div><div className="rhint">마감은 되돌리기 어려우니 평소엔 꺼두기를 권장해요. 출결 반영만 하고, 마감은 필요할 때만 켜세요.</div></div>
             <div className="rctrl">
               <Toggle on={settings.closeByDefault} onChange={v => setSettings({...settings, closeByDefault: v})}/>
             </div><div/>
@@ -146,11 +146,6 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
   const [selected, setSelected] = useState<any>(new Set());
   const [day, setDay] = useState<any>("전체");
   const [subjectLookup, setSubjectLookup] = useState<any>({ index: null, loading: false, error: "", lessons: [] });
-  const [advancedRows, setAdvancedRows] = useState<any>(new Set());
-  const toggleAdvanced = (index) => {
-    setAdvancedRows(prev => { const n = new Set(prev); n.has(index) ? n.delete(index) : n.add(index); return n; });
-  };
-
   const filtered = rows.map((r, i) => ({...r, _i: i})).filter(r => day === "전체" || r.day === day);
   const assignedLessons = settings?.assignedLessons || [];
   const isNeisMode = (settings?.timetableMode || "neis") === "neis";
@@ -217,13 +212,9 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
       });
   };
   const applyAssignedSubject = (index, subject) => {
-    const lesson = assignedLessons[index] || {};
-    updateAssignedLesson(index, {
-      subjectName: lesson.subjectName || subject,
-      neisSubjectLabel: subject,
-    });
+    updateAssignedLesson(index, { subjectName: subject, neisSubjectLabel: subject });
     setSubjectLookup({ index: null, loading: false, error: "", lessons: [] });
-    appendLog("OK", `NEIS 표시명 적용: ${subject}`);
+    appendLog("OK", `과목 적용: ${subject}`);
   };
   const saveNeisModeSettings = () => {
     const validLessons = assignedLessons.filter(lesson =>
@@ -286,50 +277,35 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
               <button className="tb-btn" onClick={saveNeisApiKey}><Icon name="check" size={14}/> API 키 저장</button>
             </div>
             <div className="mode-help">
-              내가 가르치는 학년·반·과목을 추가하고 위의 ‘담당 수업 저장’을 누르세요. ‘오늘 출결’ 화면이 선택한 날짜의 NEIS 시간표에서 그 수업을 자동으로 찾아 줍니다.
+              내가 가르치는 학년·반·과목을 추가하고 위의 ‘담당 수업 저장’을 누르세요. 선택한 날짜의 NEIS 시간표에서 그 수업을 자동으로 찾아 줍니다.
             </div>
             <div className="assigned-list">
               {assignedLessons.length === 0 ? (
                 <EmptyState icon="board" title="담당 수업이 없어요" body="학년, 반, 과목을 추가하면 선택 날짜 기준으로 NEIS 시간표에서 자동 조회합니다."/>
-              ) : assignedLessons.map((lesson, index) => {
-                const labelDiffers = Boolean(String(lesson.neisSubjectLabel || "").trim())
-                  && String(lesson.neisSubjectLabel || "").trim() !== String(lesson.subjectName || "").trim();
-                const advOpen = advancedRows.has(index)
-                  || labelDiffers
-                  || Boolean((lesson.subjectAliases || []).length);
-                return (
+              ) : assignedLessons.map((lesson, index) => (
                 <React.Fragment key={index}>
                 <div className="assigned-row-basic">
                   <select className="select" value={lesson.grade} onChange={e => updateAssignedLesson(index, { grade: +e.target.value })}>
                     {[1,2,3].map(n => <option key={n} value={n}>{n}학년</option>)}
                   </select>
                   <input className="input" value={lesson.classNo} onChange={e => updateAssignedLesson(index, { classNo: e.target.value })} placeholder="반"/>
-                  <input className="input" value={lesson.subjectName} onChange={e => updateAssignedLesson(index, { subjectName: e.target.value })} placeholder="과목명 · 예: 수학1"/>
-                  <button className="tb-btn ghost assigned-adv-toggle" onClick={() => toggleAdvanced(index)} title="과목명이 NEIS 표기와 다를 때만 사용">
-                    {advOpen ? "표시명 닫기" : "표시명 다름?"}
+                  <input className="input" value={lesson.subjectName} onChange={e => updateAssignedLesson(index, { subjectName: e.target.value, neisSubjectLabel: "" })} placeholder="과목명 · 예: 수학1"/>
+                  <button className="tb-btn assigned-check-btn" onClick={() => checkAssignedSubject(index)} disabled={subjectLookup.loading && subjectLookup.index === index}>
+                    <Icon name={subjectLookup.loading && subjectLookup.index === index ? "clock" : "search"} size={14}/> 과목 찾기
                   </button>
                   <button className="tb-iconbtn" onClick={() => removeAssignedLesson(index)} title="삭제"><Icon name="trash" size={15}/></button>
                 </div>
-                {advOpen && (
-                  <div className="assigned-row-adv">
-                    <input className="input" value={lesson.neisSubjectLabel} onChange={e => updateAssignedLesson(index, { neisSubjectLabel: e.target.value })} placeholder="NEIS 표시명 · 예: 수학Ⅰ"/>
-                    <input className="input" value={(lesson.subjectAliases || []).join(", ")} onChange={e => updateAssignedLesson(index, { subjectAliases: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })} placeholder="별칭 · 쉼표 구분"/>
-                    <button className="tb-btn assigned-check-btn" onClick={() => checkAssignedSubject(index)} disabled={subjectLookup.loading && subjectLookup.index === index}>
-                      <Icon name={subjectLookup.loading && subjectLookup.index === index ? "clock" : "search"} size={14}/> 유사 표시명 찾기
-                    </button>
-                  </div>
-                )}
                 {subjectLookup.index === index && (
                   <div className="assigned-lookup-panel">
                     {subjectLookup.loading ? (
-                      <span>해당 학년 NEIS 시간표에서 입력 과목명과 유사한 후보를 찾는 중입니다.</span>
+                      <span>선택한 날짜의 NEIS 시간표에서 과목을 찾는 중입니다…</span>
                     ) : subjectLookup.error ? (
                       <span className="lookup-error">{subjectLookup.error}</span>
                     ) : subjectLookup.lessons.length === 0 ? (
-                      <span>유사한 NEIS 과목명을 찾지 못했습니다. NEIS 표시명을 직접 입력하세요.</span>
+                      <span>맞는 과목을 찾지 못했어요. 입력한 과목명 그대로 사용됩니다.</span>
                     ) : (
                       <>
-                        <strong>{subjectLookup.scope === "class" ? "해당 학급 후보" : "해당 학년 후보"}</strong>
+                        <strong>맞는 과목을 누르세요</strong>
                         <div className="lookup-options">
                           {subjectLookup.lessons.map((candidate, candidateIndex) => (
                             <button key={`${candidate.subject}-${candidateIndex}`} className="tb-btn" onClick={() => applyAssignedSubject(index, candidate.subject)}>
@@ -342,8 +318,7 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
                   </div>
                 )}
                 </React.Fragment>
-                );
-              })}
+              ))}
             </div>
           </div>
         )}

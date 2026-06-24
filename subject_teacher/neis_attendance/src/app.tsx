@@ -46,7 +46,7 @@ function App() {
   const [rosters, setRosters] = useState<any>(ROSTERS);
   const [date, setDate] = useState<any>(todayIso());
   const [password, setPassword] = useState<any>("");
-  const [closeAfter, setCloseAfter] = useState<any>(true);
+  const [closeAfter, setCloseAfter] = useState<any>(false);
   const [running, setRunning] = useState<any>(false);
   const [progress, setProgress] = useState<any>({ done: 0, total: 0, current: "", state: "idle" });
   const [logOpen, setLogOpen] = useState<any>(false);
@@ -64,7 +64,7 @@ function App() {
     { ts: "09:02:15", lv: "완료", msg: "오늘 수업 6건 로드 — 3건 반영됨, 3건 대기" },
   ]);
   const [settings, setSettings] = useState<any>({
-    teacherName: "", schoolName: "", schoolCode: "", schoolKind: "", region: "서울", year: "2026", term: "1", effectiveFrom: "2026-03-02", closeByDefault: true,
+    teacherName: "", schoolName: "", schoolCode: "", schoolKind: "", region: "서울", year: "2026", term: "1", effectiveFrom: "2026-03-02", closeByDefault: false,
     timetableMode: "neis", assignedLessons: []
   });
   const [neisApiKey, setNeisApiKey] = useState<any>("");
