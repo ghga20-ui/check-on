@@ -204,6 +204,38 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
                    slots, setSlots, rosters, running, progress, runLog, startRun, saveSlotAttendance, appendLog, refreshSlots, publishNeisTimetableForMobile, slotLoading, slotError }) => {
   const [openSlot, setOpenSlot] = useState<any>(null);
   const [marksById, setMarksById] = useState<any>({});
+  const [boganOpen, setBoganOpen] = useState<any>(false);
+  const [bgSaving, setBgSaving] = useState<any>(false);
+  const [bg, setBg] = useState<any>({ grade: 2, classNo: "", period: 1, subject: "", absent: "", excused: "" });
+
+  const parseNums = (text) => String(text || "").split(/[\s,]+/).map(x => x.trim()).filter(Boolean)
+    .map(Number).filter(n => Number.isInteger(n) && n > 0);
+
+  const addBogang = () => {
+    const classNo = String(bg.classNo).trim();
+    if (!classNo) { appendLog && appendLog("오류", "반을 입력해 주세요"); return; }
+    const subj = String(bg.subject || "").replace(/[\s-]/g, "") || "subject";
+    const id = `neis-${bg.grade}-${classNo}-${bg.period}-${subj}`;
+    const marks: any = {};
+    parseNums(bg.absent).forEach(n => { marks[n] = "absent"; });
+    parseNums(bg.excused).forEach(n => { marks[n] = "excused"; });
+    const absCount = Object.keys(marks).length;
+    setBgSaving(true);
+    Promise.resolve(saveSlotAttendance(id, marks)).then((saved) => {
+      const checkedAt = saved?.checkedAt || new Date().toISOString();
+      const newSlot = {
+        id, period: bg.period, grade: bg.grade, classNo, subject: bg.subject || "",
+        room: `${bg.grade}-${classNo}`, time: `${bg.period}교시`, checked: true, absences: absCount,
+        synced: false, closed: false, checkedAt, marks,
+        note: absCount ? `결과·인정결과 ${absCount}명` : "전원 출석", adhoc: true,
+      };
+      setSlots(prev => [...prev.filter(s => s.id !== id), newSlot].sort((a, b) => (a.period || 0) - (b.period || 0)));
+      setBoganOpen(false);
+      setBg({ grade: 2, classNo: "", period: 1, subject: "", absent: "", excused: "" });
+      appendLog && appendLog("완료", `보강 추가: ${bg.grade}-${classNo} ${bg.period}교시`);
+    }).catch(err => appendLog && appendLog("오류", `보강 추가 실패: ${err?.message || err}`))
+      .finally(() => setBgSaving(false));
+  };
 
   const total = slots.length;
   const checked = slots.filter(s => s.checked).length;
@@ -227,6 +259,9 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
         <span className="title">오늘 출결</span>
         <span className="sub">· 선택한 날짜의 수업을 확인하고 NEIS에 반영합니다</span>
         <div className="topbar-actions">
+          <button className="tb-btn" onClick={() => setBoganOpen(true)}>
+            <Icon name="plus" size={14}/> 보강 추가
+          </button>
           <button className="tb-btn" onClick={() => {
             if (refreshSlots) refreshSlots(date);
           }} disabled={slotLoading}>
@@ -336,7 +371,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
                   <span className="p-num">{s.period}</span>
                 </div>
                 <div className="subject">
-                  {s.subject}
+                  {s.subject}{s.adhoc && <span className="bogang-tag">보강</span>}
                   <div className="sub2">{s.room} · {s.time}</div>
                 </div>
                 <div className="klass">{s.grade}</div>
@@ -369,6 +404,56 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
           onSaveMarks={onSaveMarks}
           appendLog={appendLog}
         />
+      )}
+
+      {boganOpen && (
+        <div className="ob-overlay" role="dialog" aria-modal="true" aria-label="보강 수업 추가">
+          <div className="ob-card">
+            <div className="ob-head">
+              <div className="ob-head-text">
+                <h2>보강 수업 추가</h2>
+                <div className="ob-sub">오늘({date})만 처리할 임시 수업입니다. 담당 수업·시간표는 바뀌지 않아요. NEIS에 보강이 등록돼 있어야 반영됩니다.</div>
+              </div>
+              <button className="ob-x" onClick={() => setBoganOpen(false)} aria-label="닫기"><Icon name="x" size={18}/></button>
+            </div>
+            <div className="bogang-form">
+              <div className="field">
+                <label>학년</label>
+                <select className="select" value={bg.grade} onChange={e => setBg({ ...bg, grade: +e.target.value })}>
+                  {[1, 2, 3].map(n => <option key={n} value={n}>{n}학년</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>반</label>
+                <input className="input" value={bg.classNo} onChange={e => setBg({ ...bg, classNo: e.target.value })} placeholder="예: 5"/>
+              </div>
+              <div className="field">
+                <label>교시</label>
+                <select className="select" value={bg.period} onChange={e => setBg({ ...bg, period: +e.target.value })}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}교시</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>과목 (선택)</label>
+                <input className="input" value={bg.subject} onChange={e => setBg({ ...bg, subject: e.target.value })} placeholder="비워도 됨"/>
+              </div>
+              <div className="field full">
+                <label>결과(/) 학생 번호</label>
+                <input className="input" value={bg.absent} onChange={e => setBg({ ...bg, absent: e.target.value })} placeholder="예: 3, 15 (없으면 비움 = 전원 출석)"/>
+              </div>
+              <div className="field full">
+                <label>인정결과(Ø) 학생 번호</label>
+                <input className="input" value={bg.excused} onChange={e => setBg({ ...bg, excused: e.target.value })} placeholder="예: 7"/>
+              </div>
+            </div>
+            <div className="ob-actions">
+              <button className="tb-btn" onClick={() => setBoganOpen(false)}>취소</button>
+              <button className="tb-btn primary" onClick={addBogang} disabled={!String(bg.classNo).trim() || bgSaving}>
+                {bgSaving ? "추가 중…" : "추가"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="run-action-bar">

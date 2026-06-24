@@ -32,6 +32,7 @@ from subject_teacher.drive.schemas import (
 )
 from subject_teacher.neis_open_api import (
     normalize_subject_name,
+    parse_neis_slot_id,
     query_class_timetable,
     query_subject_candidates,
     search_schools,
@@ -664,12 +665,54 @@ class Api:
 
     # ?? ?ㅻ뒛 ?섏뾽 ?щ’ ????????????????????????????????????????????????????????
 
+    def _merge_adhoc_slots(self, store, date_str: str, result: list[dict[str, object]]) -> list[dict[str, object]]:
+        """Append 보강 records (neis-* ids not already listed) so they survive reload."""
+        try:
+            existing = {str(item.get("id")) for item in result}
+            monthly = self._load_monthly_cached(store, date_str[:7])
+            day_records = monthly.records.get(date_str, {}) if monthly else {}
+            for slot_id, attendance in day_records.items():
+                if slot_id in existing:
+                    continue
+                parsed = parse_neis_slot_id(slot_id)
+                if parsed is None:
+                    continue
+                grade, class_no, period = parsed
+                absence_count = len(attendance.absences)
+                result.append(
+                    {
+                        "id": slot_id,
+                        "period": period,
+                        "grade": grade,
+                        "classNo": class_no,
+                        "subject": "",
+                        "neisLabel": "",
+                        "room": f"{grade}-{class_no}",
+                        "roster": f"{grade}-{class_no}",
+                        "time": f"{period}교시",
+                        "note": f"결과·인정결과 {absence_count}명" if absence_count else "전원 출석",
+                        "checked": True,
+                        "absences": absence_count,
+                        "synced": attendance.synced_to_neis,
+                        "closed": attendance.closed_on_neis,
+                        "checkedAt": attendance.checked_at,
+                        "marks": _slot_marks(attendance),
+                        "adhoc": True,
+                    }
+                )
+            result.sort(key=lambda item: int(item.get("period") or 0))
+            return result
+        except Exception:
+            logger.exception("_merge_adhoc_slots failed")
+            return result
+
     def get_today_slots(self, date_str: str) -> str:
         try:
             store = self._store()
             settings = self._load_settings_cached(store)
             if settings is not None and settings.timetable_mode == "neis":
-                return json.dumps(self._cached_neis_mode_today_slots(store, settings, date_str), ensure_ascii=False)
+                neis_slots = self._cached_neis_mode_today_slots(store, settings, date_str)
+                return json.dumps(self._merge_adhoc_slots(store, date_str, neis_slots), ensure_ascii=False)
             summaries = summarize_day(store, date_str)
             monthly = self._load_monthly_cached(store, date_str[:7])
             day_records = monthly.records.get(date_str, {}) if monthly else {}
@@ -700,7 +743,7 @@ class Api:
                     "marks": _slot_marks(attendance),
                     }
                 )
-            return json.dumps(result)
+            return json.dumps(self._merge_adhoc_slots(store, date_str, result), ensure_ascii=False)
         except Exception as exc:
             logger.exception("get_today_slots failed")
             return _json_error(exc)

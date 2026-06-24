@@ -131,6 +131,27 @@ def subject_matches(actual: str, expected: list[str], aliases: list[str] | None 
     return any(actual_norm == normalize_subject_name(candidate) for candidate in candidates)
 
 
+_NEIS_SLOT_ID_RE = re.compile(r"^neis-(\d+)-(.+?)-(\d+)-(.*)$")
+
+
+def parse_neis_slot_id(slot_id: str) -> tuple[int, str, int] | None:
+    """Parse a ``neis-{grade}-{class}-{period}-{subject}`` slot id.
+
+    Returns ``(grade, class_no, period)`` or ``None`` if it does not match.
+    Used to reconstruct ad-hoc (보강) slots that are not in the stored timetable.
+    """
+    match = _NEIS_SLOT_ID_RE.match(slot_id or "")
+    if match is None:
+        return None
+    try:
+        grade = int(match.group(1))
+        class_no = match.group(2)
+        period = int(match.group(3))
+    except (TypeError, ValueError):
+        return None
+    return (grade, class_no, period)
+
+
 def search_schools(
     *,
     region: str,

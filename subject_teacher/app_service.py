@@ -12,9 +12,38 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 from subject_teacher.drive.store import DriveStore
-from subject_teacher.drive.schemas import Settings
+from subject_teacher.drive.schemas import Settings, TimetableSlot
 from subject_teacher.neis.runner import DayInput, SlotResult, process_day
+from subject_teacher.neis_open_api import parse_neis_slot_id
 from subject_teacher.state import build_store
+
+
+def _adhoc_slot_from_id(slot_id: str, weekday: int) -> TimetableSlot | None:
+    """Reconstruct a one-off (보강) timetable slot from its ``neis-*`` id.
+
+    Lets the run write attendance for a substitute class that the teacher added
+    on the day, without that class living in the stored weekly timetable.
+    The NEIS period row is matched by period + 학년·반 (subject optional), so an
+    empty ``neis_subject_label`` is fine.
+    """
+    parsed = parse_neis_slot_id(slot_id)
+    if parsed is None:
+        return None
+    grade, class_no, period = parsed
+    if not (1 <= grade <= 3) or not (1 <= period <= 7) or not class_no:
+        return None
+    try:
+        return TimetableSlot(
+            id=slot_id,
+            dayOfWeek=weekday,
+            period=period,
+            grade=grade,
+            classNo=class_no,
+            subjectName="보강",
+            neisSubjectLabel="",
+        )
+    except Exception:
+        return None
 
 
 @dataclass
@@ -53,13 +82,24 @@ def build_day_input(store: DriveStore, settings: Settings, date_str: str) -> Day
     day_map = monthly.records[date_str]
 
     pairs = []
+    timetable_ids = set()
     for slot in timetable.slots:
+        timetable_ids.add(slot.id)
         if slot.day_of_week != weekday:
             continue
         attendance = day_map.get(slot.id)
         if attendance is None:
             continue
         pairs.append((slot, attendance))
+
+    # Ad-hoc (보강) records: saved under a neis-* id that is not in the stored
+    # timetable. Reconstruct the slot from the id so the run writes them too.
+    for slot_id, attendance in day_map.items():
+        if slot_id in timetable_ids:
+            continue
+        adhoc = _adhoc_slot_from_id(slot_id, weekday)
+        if adhoc is not None:
+            pairs.append((adhoc, attendance))
 
     return DayInput(
         date=date_str,

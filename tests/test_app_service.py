@@ -68,6 +68,58 @@ def test_build_day_input_filters_slots_by_weekday_and_records():
     assert day_input.slots[0][0].id == "mon-3"
 
 
+def test_build_day_input_includes_adhoc_substitute_slots():
+    class FakeStore:
+        def load_timetable(self):
+            return Timetable(
+                schemaVersion=1,
+                effectiveFrom="2026-03-02",
+                slots=[
+                    TimetableSlot(
+                        id="neis-2-1-3-문학",
+                        dayOfWeek=1,
+                        period=3,
+                        grade=2,
+                        classNo=1,
+                        subjectName="문학",
+                        neisSubjectLabel="문학",
+                    ),
+                ],
+            )
+
+        def load_monthly(self, month: str):
+            return MonthlyAttendance(
+                schemaVersion=1,
+                month=month,
+                records={
+                    "2026-04-20": {
+                        "neis-2-1-3-문학": SlotAttendance(
+                            absences=[], checkedAt="2026-04-20T09:55:00+09:00",
+                            source="mobile", syncedToNeis=False, closedOnNeis=False,
+                        ),
+                        # 보강: not in the timetable, saved under a neis-* id.
+                        "neis-1-5-2-subject": SlotAttendance(
+                            absences=[], checkedAt="2026-04-20T10:55:00+09:00",
+                            source="pc", syncedToNeis=False, closedOnNeis=False,
+                        ),
+                    }
+                },
+            )
+
+    settings = Settings(
+        schemaVersion=1, teacherName="T", schoolName="S", region="경기",
+        semester=Semester(year=2026, term=1), closeByDefault=False,
+        updatedAt="2026-04-20T09:00:00+09:00",
+    )
+
+    day_input = build_day_input(FakeStore(), settings, "2026-04-20")
+
+    ids = sorted(slot.id for slot, _ in day_input.slots)
+    assert ids == ["neis-1-5-2-subject", "neis-2-1-3-문학"]
+    adhoc = next(slot for slot, _ in day_input.slots if slot.id == "neis-1-5-2-subject")
+    assert (adhoc.grade, adhoc.class_no, adhoc.period) == (1, "5", 2)
+
+
 def test_run_day_keeps_browser_open_when_requested(monkeypatch):
     driver = MagicMock()
     monkeypatch.setattr("subject_teacher.app_service.prepare_run_context", MagicMock())
