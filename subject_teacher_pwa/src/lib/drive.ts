@@ -5,9 +5,37 @@
 // the desktop Python app, which uses the same file names and camelCase JSON.
 
 import { getValidAccessToken } from "./auth";
+import { decryptEnvelope, encryptEnvelope, importSyncKey, isEnvelope } from "./crypto";
+import { loadSyncKey } from "./keyStore";
 
 const FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
+
+/** Thrown when an encrypted file is found but this device has no sync key yet. */
+export class PairingRequiredError extends Error {
+  constructor() {
+    super("데스크톱과 연결(페어링)이 필요합니다.");
+    this.name = "PairingRequiredError";
+  }
+}
+
+let cachedKey: CryptoKey | null = null;
+let cachedKeyLoaded = false;
+
+async function getSyncKey(): Promise<CryptoKey | null> {
+  if (!cachedKeyLoaded) {
+    const bytes = await loadSyncKey();
+    cachedKey = bytes ? await importSyncKey(bytes) : null;
+    cachedKeyLoaded = true;
+  }
+  return cachedKey;
+}
+
+/** Call after pairing or 연결 해제 so the next request re-reads the stored key. */
+export function resetSyncKeyCache(): void {
+  cachedKey = null;
+  cachedKeyLoaded = false;
+}
 
 export class DriveError extends Error {
   constructor(
@@ -59,7 +87,13 @@ export async function readJson<T = unknown>(name: string): Promise<{ id: string;
   const response = await ensureOk(
     await fetch(`${FILES_URL}/${id}?alt=media`, { headers: await authHeaders() }),
   );
-  return { id, data: (await response.json()) as T };
+  let data = (await response.json()) as unknown;
+  if (isEnvelope(data)) {
+    const key = await getSyncKey();
+    if (!key) throw new PairingRequiredError();
+    data = await decryptEnvelope(name, data, key);
+  }
+  return { id, data: data as T };
 }
 
 /**
@@ -71,7 +105,8 @@ export async function writeJson(
   data: unknown,
   existingId?: string | null,
 ): Promise<string> {
-  const body = JSON.stringify(data);
+  const key = await getSyncKey();
+  const body = JSON.stringify(key ? await encryptEnvelope(name, data, key) : data);
 
   if (existingId) {
     const response = await ensureOk(
