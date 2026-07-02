@@ -10,6 +10,8 @@ from typing import Any
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
+from subject_teacher.drive import crypto
+
 
 def _is_transient_error(exc: Exception) -> bool:
     # A long-lived httplib2 keep-alive connection can go bad two ways:
@@ -65,12 +67,13 @@ def _with_transient_retry(
 class DriveAppDataClient:
     """Thin wrapper around Drive v3 appDataFolder operations."""
 
-    def __init__(self, credentials=None, service=None):
+    def __init__(self, credentials=None, service=None, sync_key: bytes | None = None):
         if service is None:
             if credentials is None:
                 raise ValueError("either credentials or service must be provided")
             service = build("drive", "v3", credentials=credentials, cache_discovery=False)
         self._service = service
+        self._sync_key = sync_key
 
     def _reset_connections(self) -> None:
         """Close and evict cached httplib2 keep-alive connections.
@@ -109,6 +112,16 @@ class DriveAppDataClient:
         return files[0]["id"] if files else None
 
     def read_json(self, name: str) -> dict[str, Any] | None:
+        """Read a JSON file, transparently decrypting E2E envelopes."""
+        raw = self.read_json_raw(name)
+        if raw is None or not crypto.is_envelope(raw):
+            return raw
+        if self._sync_key is None:
+            raise crypto.SyncKeyMissingError(name)
+        return crypto.decrypt_envelope(name, raw, self._sync_key)
+
+    def read_json_raw(self, name: str) -> dict[str, Any] | None:
+        """Read a JSON file as stored, without decrypting envelopes."""
         file_id = self.find_file_id(name)
         if file_id is None:
             return None
@@ -125,6 +138,8 @@ class DriveAppDataClient:
         return json.loads(buffer.getvalue().decode("utf-8"))
 
     def upsert_json(self, name: str, payload: dict[str, Any]) -> str:
+        if self._sync_key is not None:
+            payload = crypto.encrypt_envelope(name, payload, self._sync_key)
         media = MediaIoBaseUpload(
             io.BytesIO(json.dumps(payload, ensure_ascii=False).encode("utf-8")),
             mimetype="application/json",

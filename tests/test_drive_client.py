@@ -1,7 +1,14 @@
-from unittest.mock import MagicMock
+import base64
+import json as json_module
 import ssl
+from unittest.mock import MagicMock
 
+import pytest
+
+from subject_teacher.drive import crypto as drive_crypto
 from subject_teacher.drive.client import DriveAppDataClient
+
+E2E_KEY = bytes(range(32))
 
 
 def mock_files(list_result: list[dict]):
@@ -105,6 +112,54 @@ def test_transient_error_drops_poisoned_connection_before_retry():
     assert client.find_file_id("settings.json") == "abc123"
     conn.close.assert_called_once()
     assert service._http.http.connections == {}
+
+
+def test_upsert_json_encrypts_when_key_present():
+    service = MagicMock()
+    service.files.return_value.list.return_value.execute.return_value = {"files": []}
+    service.files.return_value.create.return_value.execute.return_value = {"id": "new123"}
+
+    client = DriveAppDataClient(service=service, sync_key=E2E_KEY)
+    client.upsert_json("settings.json", {"schemaVersion": 1})
+
+    media = service.files.return_value.create.call_args.kwargs["media_body"]
+    stored = json_module.loads(media._fd.getvalue().decode("utf-8"))
+    assert drive_crypto.is_envelope(stored)
+    assert drive_crypto.decrypt_envelope("settings.json", stored, E2E_KEY) == {"schemaVersion": 1}
+
+
+def test_upsert_json_stays_plaintext_without_key():
+    service = MagicMock()
+    service.files.return_value.list.return_value.execute.return_value = {"files": []}
+    service.files.return_value.create.return_value.execute.return_value = {"id": "new123"}
+
+    client = DriveAppDataClient(service=service)
+    client.upsert_json("settings.json", {"schemaVersion": 1})
+
+    media = service.files.return_value.create.call_args.kwargs["media_body"]
+    stored = json_module.loads(media._fd.getvalue().decode("utf-8"))
+    assert stored == {"schemaVersion": 1}
+
+
+def test_read_json_decrypts_envelope(monkeypatch):
+    envelope = drive_crypto.encrypt_envelope("settings.json", {"schemaVersion": 1}, E2E_KEY)
+    client = DriveAppDataClient(service=MagicMock(), sync_key=E2E_KEY)
+    monkeypatch.setattr(client, "read_json_raw", lambda name: envelope)
+    assert client.read_json("settings.json") == {"schemaVersion": 1}
+
+
+def test_read_json_passes_legacy_plaintext(monkeypatch):
+    client = DriveAppDataClient(service=MagicMock(), sync_key=E2E_KEY)
+    monkeypatch.setattr(client, "read_json_raw", lambda name: {"schemaVersion": 1})
+    assert client.read_json("settings.json") == {"schemaVersion": 1}
+
+
+def test_read_json_envelope_without_key_raises(monkeypatch):
+    envelope = drive_crypto.encrypt_envelope("settings.json", {"schemaVersion": 1}, E2E_KEY)
+    client = DriveAppDataClient(service=MagicMock())
+    monkeypatch.setattr(client, "read_json_raw", lambda name: envelope)
+    with pytest.raises(drive_crypto.SyncKeyMissingError):
+        client.read_json("settings.json")
 
 
 def test_upsert_json_creates_when_absent():
