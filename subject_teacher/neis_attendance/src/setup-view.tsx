@@ -203,8 +203,24 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
     <div className="list-group form-list" style={{marginTop:16}}>
       <div className="form-row">
         <div>
-          <div className="rlabel">모바일 연결 암호화</div>
-          <div className="rhint">켜면 클라우드에 저장되는 출결 데이터가 암호화되어, QR로 연결한 내 기기에서만 읽을 수 있어요.</div>
+          <div className="rlabel">
+            모바일 연결 암호화{" "}
+            {enabled === true && <span style={{color:"#1e8e3e", fontWeight:600, fontSize:12}}>🔒 사용 중</span>}
+            {enabled === false && <span style={{color:"#999", fontWeight:600, fontSize:12}}>꺼짐</span>}
+          </div>
+          {enabled !== true && (
+            <div className="rhint">
+              지금은 학번·출결 데이터가 구글 드라이브에 그대로 저장됩니다. 켜면 데이터가
+              <b> 암호화</b>되어 선생님의 기기(이 PC·연결한 휴대폰)에서만 읽을 수 있고,
+              구글을 포함한 누구도 내용을 볼 수 없습니다.
+            </div>
+          )}
+          {enabled === true && (
+            <div className="rhint">
+              출결 데이터가 암호화되어 저장되고 있습니다. 휴대폰 연결(QR)은 기기마다
+              <b> 처음 한 번만</b> 하면 됩니다 — 휴대폰을 바꾸셨을 때만 다시 연결하세요.
+            </div>
+          )}
         </div>
         <div className="rctrl">
           {enabled === false && (
@@ -222,7 +238,11 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
         <div className="form-row">
           <div>
             <div className="rlabel">휴대폰 연결</div>
-            <div className="rhint">휴대폰 앱에서 <b>QR코드 스캔</b>을 눌러 촬영하세요. 카메라가 안 되면 아래 연결 코드를 직접 입력해도 됩니다.</div>
+            <div className="rhint">
+              휴대폰에서 체크온을 열면 <b>"데스크톱과 연결"</b> 화면이 자동으로 나타납니다.
+              거기서 <b>[QR코드 스캔]</b>을 눌러 이 QR을 촬영하세요. 카메라가 안 되면 아래
+              연결 코드를 직접 입력해도 됩니다.
+            </div>
             <div className="rhint" style={{marginTop:6}}>⚠ 이 QR·코드는 비밀번호와 같습니다. 화면 공유 중에는 열지 말고, 인쇄해 두면 복구 코드로 쓸 수 있어요.</div>
             {migrated !== null && <div className="rhint" style={{marginTop:6}}>기존 데이터 {migrated}건을 암호화했습니다.</div>}
             {failed > 0 && (

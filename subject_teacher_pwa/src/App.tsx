@@ -7,6 +7,8 @@ import {
   type StudentMark,
 } from "./lib/attendance";
 import { loadQueue, persistQueue } from "./lib/db";
+import { resetSyncKeyCache } from "./lib/drive";
+import { clearSyncKey, loadSyncKey } from "./lib/keyStore";
 import {
   computeLessonDisplayStatus,
   getLessonsForDate,
@@ -123,6 +125,30 @@ export default function App({
   );
   const [toast, setToast] = useState<string | null>(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  // E2E pairing state for the 설정 보안 section (null = still loading).
+  const [paired, setPaired] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    loadSyncKey()
+      .then((key) => {
+        if (!cancelled) setPaired(key !== null);
+      })
+      .catch(() => {
+        if (!cancelled) setPaired(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const disconnectPairing = async () => {
+    const ok = window.confirm(
+      "이 기기의 암호화 연결(열쇠)을 삭제할까요?\n다시 사용하려면 데스크톱 QR로 다시 연결해야 합니다.",
+    );
+    if (!ok) return;
+    await clearSyncKey();
+    resetSyncKeyCache();
+    setPaired(false);
+  };
   const toastTimer = useRef<number | null>(null);
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -447,8 +473,26 @@ export default function App({
             ))}
           </section>
           <section className="info-card">
+            <strong>보안</strong>
+            {paired === true && (
+              <>
+                <p>🔒 <b>암호화로 보호 중</b> — 출결 데이터가 암호화되어 저장되며, 이
+                  기기와 데스크톱만 읽을 수 있습니다. QR 연결은 기기마다 처음 한 번만
+                  필요합니다.</p>
+                <button className="secondary danger" type="button" onClick={() => void disconnectPairing()}>
+                  기기 연결 해제
+                </button>
+              </>
+            )}
+            {paired === false && (
+              <p>암호화 기기 연결되지 않음 — 데스크톱 앱의 <b>설정 → 모바일 연결
+                암호화</b>에서 QR을 띄운 뒤, 이 앱을 다시 열면 연결 화면이 나타납니다.</p>
+            )}
+          </section>
+          <section className="info-card">
             <strong>개인정보</strong>
-            <p>학생 이름은 저장하지 않습니다. 학번·출결만 본인 Google Drive에 저장되며 외부 서버로 전송되지 않습니다.</p>
+            <p>학생 이름은 저장하지 않습니다. 학번·출결만 본인 Google Drive에 저장되며,
+              암호화를 켜면 구글도 내용을 읽을 수 없습니다.</p>
             <button className="policy-link" type="button" onClick={() => setShowPrivacy(true)}>개인정보처리방침 전문 보기</button>
           </section>
         </main>

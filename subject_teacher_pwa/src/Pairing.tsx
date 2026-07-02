@@ -99,10 +99,19 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
         <div className="login-mark" aria-hidden="true">🔒</div>
         <h1>데스크톱과 연결</h1>
         <p className="login-tagline">
-          출결 데이터가 암호화되어 내 기기에서만 열립니다. 데스크톱 앱의{" "}
-          <b>설정 → 모바일 연결 암호화</b>에 표시된 QR코드를 스캔하거나 연결 코드를 입력해
-          주세요.
+          선생님의 출결 데이터는 <b>암호화</b>되어 있어, 구글을 포함한 누구도 내용을 볼 수
+          없습니다. 이 휴대폰에서 읽으려면 데스크톱과 한 번 연결해 열쇠를 받아야 해요.
         </p>
+        <p className="login-note" style={{ marginTop: 4 }}>
+          ✓ <b>처음 한 번만</b> 하면 됩니다 — 이후에는 자동으로 연결됩니다.
+        </p>
+
+        <ol style={{ textAlign: "left", margin: "12px 0", paddingLeft: 20, lineHeight: 1.7 }}>
+          <li>PC에서 <b>체크온 데스크톱 앱</b>을 엽니다</li>
+          <li><b>설정 → 기본 정보</b> 맨 아래 <b>모바일 연결 암호화</b>로 이동</li>
+          <li><b>[암호화 켜기]</b> 또는 <b>[휴대폰 연결 QR 보기]</b>를 눌러 QR코드를 띄웁니다</li>
+          <li>아래 <b>[QR코드 스캔]</b>으로 촬영하면 끝!</li>
+        </ol>
 
         <video
           ref={videoRef}
@@ -121,7 +130,7 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
         )}
 
         <label htmlFor="pairing-code" style={{ display: "block", marginTop: 16 }}>
-          연결 코드
+          연결 코드 (카메라를 쓸 수 없을 때)
         </label>
         <input
           id="pairing-code"
