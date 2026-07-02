@@ -1,0 +1,7 @@
+{
+  "keyB64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+  "nonceB64": "AAECAwQFBgcICQoL",
+  "aad": "attendance-2026-07.json",
+  "plaintextJson": "{\"schemaVersion\":1,\"month\":\"2026-07\",\"records\":{}}",
+  "ciphertextB64": "PCCleK2Ar3rbJOX42IYWT7nnqxadFDEIUEXfpy9ZMoQsIJneg+Ng/RfLDYn7pRJDkyRWIxN95DSXyeKMo64rNcL5"
+}

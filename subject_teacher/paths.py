@@ -39,3 +39,7 @@ def get_client_secrets_path() -> Path:
 
 def get_students_path() -> Path:
     return get_app_data_dir() / "students.local.json"
+
+
+def get_sync_key_path() -> Path:
+    return get_app_data_dir() / "sync_key.bin"
