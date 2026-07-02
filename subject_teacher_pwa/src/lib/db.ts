@@ -9,19 +9,24 @@ import type { SaveQueueItem } from "./offlineQueue";
 
 const DB_NAME = "neis-subject";
 const STORE = "saveQueue";
-const VERSION = 1;
+// v2: adds the `keys` store holding the E2E sync key (see keyStore.ts).
+const VERSION = 2;
+export const KEYS_STORE = "keys";
 
-function hasIndexedDB(): boolean {
+export function hasIndexedDB(): boolean {
   return typeof indexedDB !== "undefined";
 }
 
-function openDb(): Promise<IDBDatabase> {
+export function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(KEYS_STORE)) {
+        db.createObjectStore(KEYS_STORE);
       }
     };
     request.onsuccess = () => resolve(request.result);
