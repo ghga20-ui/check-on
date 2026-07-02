@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import App from "./App";
 import Login from "./Login";
+import Pairing from "./Pairing";
 import { initAuth, isConfigured, requestAccessToken, revoke } from "./lib/auth";
+import { PairingRequiredError } from "./lib/drive";
 import {
   loadAll,
   loadMonthlyAttendance,
@@ -10,7 +12,7 @@ import {
 } from "./lib/driveData";
 import type { StudentEntry, TimetableSlot } from "./lib/schemas";
 
-type Phase = "init" | "signedOut" | "loading" | "ready" | "error";
+type Phase = "init" | "signedOut" | "loading" | "ready" | "error" | "pairing";
 
 function toLocalIsoDate(date = new Date()): string {
   const year = date.getFullYear();
@@ -59,9 +61,15 @@ export default function Root() {
           setPhase("ready");
         }
       })
-      .catch(() => {
+      .catch((cause) => {
+        if (cancelled) return;
+        // Encrypted data + no local key → the teacher must pair with the desktop.
+        if (cause instanceof PairingRequiredError) {
+          setPhase("pairing");
+          return;
+        }
         // No active session / consent yet → show the landing + login screen.
-        if (!cancelled) setPhase("signedOut");
+        setPhase("signedOut");
       });
     return () => {
       cancelled = true;
@@ -77,6 +85,10 @@ export default function Root() {
       setData(loaded);
       setPhase("ready");
     } catch (cause) {
+      if (cause instanceof PairingRequiredError) {
+        setPhase("pairing");
+        return;
+      }
       setPhase("signedOut");
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -104,6 +116,25 @@ export default function Root() {
 
   if (phase === "error") {
     return <Login onSignIn={signIn} notConfigured={!isConfigured()} error={error} />;
+  }
+
+  if (phase === "pairing") {
+    return (
+      <Pairing
+        onPaired={() => {
+          setPhase("loading");
+          loadAll(today.slice(0, 7))
+            .then((loaded) => {
+              setData(loaded);
+              setPhase("ready");
+            })
+            .catch((cause) => {
+              setPhase("signedOut");
+              setError(cause instanceof Error ? cause.message : String(cause));
+            });
+        }}
+      />
+    );
   }
 
   if (phase === "ready" && data) {
