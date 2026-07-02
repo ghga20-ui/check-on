@@ -91,3 +91,16 @@ def clear_sync_key() -> None:
 def pairing_payload(key: bytes) -> str:
     encoded = base64.urlsafe_b64encode(key).rstrip(b"=").decode("ascii")
     return PAIRING_PREFIX + encoded
+
+
+def migrate_plaintext_to_encrypted(client) -> int:
+    """Re-write every plaintext appDataFolder file through the (key-injected)
+    client so it lands encrypted. Envelope files are skipped — idempotent."""
+    migrated = 0
+    for name in client.list_files():
+        raw = client.read_json_raw(name)
+        if raw is None or is_envelope(raw):
+            continue
+        client.upsert_json(name, raw)
+        migrated += 1
+    return migrated

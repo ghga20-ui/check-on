@@ -71,6 +71,32 @@ def test_pairing_payload_format():
     assert base64.urlsafe_b64decode(padded) == KEY
 
 
+def test_migration_rewrites_plaintext_and_skips_envelopes():
+    from unittest.mock import MagicMock
+
+    plain = {"schemaVersion": 1, "month": "2026-07", "records": {}}
+    already = crypto.encrypt_envelope("settings.json", {"schemaVersion": 1}, KEY)
+    client = MagicMock()
+    client.list_files.return_value = ["attendance-2026-07.json", "settings.json"]
+    client.read_json_raw.side_effect = lambda name: (
+        plain if name == "attendance-2026-07.json" else already
+    )
+
+    migrated = crypto.migrate_plaintext_to_encrypted(client)
+
+    assert migrated == 1
+    client.upsert_json.assert_called_once_with("attendance-2026-07.json", plain)
+
+
+def test_migration_noop_on_empty_folder():
+    from unittest.mock import MagicMock
+
+    client = MagicMock()
+    client.list_files.return_value = []
+    assert crypto.migrate_plaintext_to_encrypted(client) == 0
+    client.upsert_json.assert_not_called()
+
+
 def test_sync_key_save_load_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setattr(crypto, "get_sync_key_path", lambda: tmp_path / "sync_key.bin")
     assert crypto.load_sync_key() is None

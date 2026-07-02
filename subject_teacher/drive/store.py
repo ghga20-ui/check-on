@@ -14,6 +14,10 @@ class DriveStore:
     def __init__(self, client: DriveAppDataClient):
         self._client = client
 
+    @property
+    def client(self) -> DriveAppDataClient:
+        return self._client
+
     def load_settings(self) -> Settings | None:
         raw = self._client.read_json(self.SETTINGS)
         if raw is None:
