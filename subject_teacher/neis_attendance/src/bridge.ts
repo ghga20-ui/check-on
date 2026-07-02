@@ -22,6 +22,9 @@ export interface DesktopApi {
   find_neis_subject_candidates(payloadJson: string): Promise<string>;
   start_run(dateStr: string, password: string, closeAfter: boolean): Promise<string>;
   reconnect(): Promise<string>;
+  get_sync_encryption_status(): Promise<string>;
+  enable_sync_encryption(): Promise<string>;
+  get_pairing_payload(): Promise<string>;
 }
 
 /** A log line pushed from Python via evaluate_js("window.__pushLog(...)"). */

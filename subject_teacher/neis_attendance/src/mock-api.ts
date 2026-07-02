@@ -58,5 +58,14 @@ export function createMockApi(): DesktopApi {
     find_neis_subject_candidates: () => ok({ scope: "grade", candidates: [] }),
     start_run: () => ok({ ok: true }),
     reconnect: () => ok({ displayName: "Demo", emailAddress: "demo@example.com" }),
+    get_sync_encryption_status: () => ok({ enabled: false }),
+    enable_sync_encryption: () =>
+      ok({
+        payload: "checkon.sync.v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        migrated: 0,
+        created: true,
+      }),
+    get_pairing_payload: () =>
+      ok({ payload: "checkon.sync.v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8" }),
   };
 }

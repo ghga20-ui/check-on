@@ -1,5 +1,7 @@
 import React from "react";
+import QRCode from "qrcode";
 import { Icon, Toggle, Segmented, PillTabs, EmptyState, Chip, Checkbox } from "./components";
+import { getApi, type DesktopApi } from "./bridge";
 import { TIMETABLE, ROSTERS } from "./data";
 const { useState, useMemo, useEffect } = React;
 
@@ -137,8 +139,96 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
             </div><div/>
           </div>
         </div>
+
+        <SyncEncryptionCard/>
       </div>
     </>
+  );
+};
+
+// The pairing payload is the raw sync key — keep it in component state only,
+// never log it, and drop it as soon as the teacher closes the panel.
+export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [payload, setPayload] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [migrated, setMigrated] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const resolveApi = () => (api ? Promise.resolve(api) : getApi());
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveApi()
+      .then(a => a.get_sync_encryption_status())
+      .then(raw => { if (!cancelled) setEnabled(JSON.parse(raw).enabled); })
+      .catch(() => { if (!cancelled) setEnabled(null); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!payload) { setQrUrl(""); return; }
+    let cancelled = false;
+    QRCode.toDataURL(payload, { margin: 1, width: 220 })
+      .then(url => { if (!cancelled) setQrUrl(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [payload]);
+
+  const enable = async () => {
+    setBusy(true);
+    try {
+      const result = JSON.parse(await (await resolveApi()).enable_sync_encryption());
+      if (result.error) throw new Error(result.error);
+      setPayload(result.payload);
+      setMigrated(result.migrated);
+      setEnabled(true);
+    } catch {
+      // status refetch on next mount; keep the card usable
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const showQr = async () => {
+    const result = JSON.parse(await (await resolveApi()).get_pairing_payload());
+    if (result.payload) { setMigrated(null); setPayload(result.payload); }
+  };
+
+  return (
+    <div className="list-group form-list" style={{marginTop:16}}>
+      <div className="form-row">
+        <div>
+          <div className="rlabel">모바일 연결 암호화</div>
+          <div className="rhint">켜면 클라우드에 저장되는 출결 데이터가 암호화되어, QR로 연결한 내 기기에서만 읽을 수 있어요.</div>
+        </div>
+        <div className="rctrl">
+          {enabled === false && (
+            <button className="tb-btn primary" disabled={busy} onClick={enable}>
+              {busy ? "암호화 중…" : "암호화 켜기"}
+            </button>
+          )}
+          {enabled === true && !payload && (
+            <button className="tb-btn" onClick={() => void showQr()}>휴대폰 연결 QR 보기</button>
+          )}
+        </div><div/>
+      </div>
+      {payload && (
+        <div className="form-row">
+          <div>
+            <div className="rlabel">휴대폰 연결</div>
+            <div className="rhint">휴대폰 앱에서 <b>QR코드 스캔</b>을 눌러 촬영하세요. 카메라가 안 되면 아래 연결 코드를 직접 입력해도 됩니다.</div>
+            <div className="rhint" style={{marginTop:6}}>⚠ 이 QR·코드는 비밀번호와 같습니다. 화면 공유 중에는 열지 말고, 인쇄해 두면 복구 코드로 쓸 수 있어요.</div>
+            {migrated !== null && <div className="rhint" style={{marginTop:6}}>기존 데이터 {migrated}건을 암호화했습니다.</div>}
+          </div>
+          <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:8, alignItems:"flex-start"}}>
+            {qrUrl && <img src={qrUrl} alt="휴대폰 연결 QR코드" width={220} height={220} style={{borderRadius:8}}/>}
+            <code style={{wordBreak:"break-all", fontSize:11, userSelect:"all"}}>{payload}</code>
+            <button className="tb-btn" onClick={() => { setPayload(""); setMigrated(null); }}>닫기</button>
+          </div><div/>
+        </div>
+      )}
+    </div>
   );
 };
 
