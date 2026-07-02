@@ -3,6 +3,7 @@ import {
   createEmptyMarks,
   cycleMark,
   marksToSlotAttendance,
+  slotAttendanceToMarks,
   summarizeLesson,
 } from "./attendance";
 
@@ -32,6 +33,29 @@ describe("mobile attendance draft helpers", () => {
       { studentNumber: 2, markType: "absent", note: "" },
       { studentNumber: 3, markType: "excused", note: "" },
     ]);
+  });
+
+  it("restores marks from a synced record (desktop-checked absences show in the roster)", () => {
+    // Regression: opening a lesson seeded an all-present draft, so a record
+    // written by the desktop showed "1명" in the list but 전원 출석 in the roster.
+    const roster = [
+      { number: 1, name: "" },
+      { number: 2, name: "" },
+      { number: 3, name: "" },
+    ];
+    const record = marksToSlotAttendance({ 1: "present", 2: "absent", 3: "excused" }, "2026-07-02T14:00:00Z");
+
+    expect(slotAttendanceToMarks(roster, record)).toEqual({ 1: "present", 2: "absent", 3: "excused" });
+  });
+
+  it("falls back to all-present marks without a record", () => {
+    const roster = [{ number: 1, name: "" }];
+    expect(slotAttendanceToMarks(roster, undefined)).toEqual({ 1: "present" });
+  });
+
+  it("ignores absences for students missing from the roster", () => {
+    const record = marksToSlotAttendance({ 9: "absent" }, "2026-07-02T14:00:00Z");
+    expect(slotAttendanceToMarks([{ number: 1, name: "" }], record)).toEqual({ 1: "present" });
   });
 
   it("summarizes checked lessons for the today list", () => {

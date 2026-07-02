@@ -13,6 +13,24 @@ export function cycleMark(mark: StudentMark): StudentMark {
   return "present";
 }
 
+/**
+ * Rebuild the per-student draft from a synced record so absences checked on
+ * another device (or in a previous session) show up in the roster view.
+ * Falls back to all-present when there is no record yet.
+ */
+export function slotAttendanceToMarks(
+  students: StudentEntry[],
+  slot?: SlotAttendance,
+): MarksByStudent {
+  const marks = createEmptyMarks(students);
+  for (const absence of slot?.absences ?? []) {
+    if (absence.studentNumber in marks) {
+      marks[absence.studentNumber] = absence.markType;
+    }
+  }
+  return marks;
+}
+
 export function marksToSlotAttendance(marks: MarksByStudent, checkedAt: string): SlotAttendance {
   const absences = Object.entries(marks)
     .filter(([, mark]) => mark !== "present")

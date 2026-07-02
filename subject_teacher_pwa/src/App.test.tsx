@@ -29,6 +29,34 @@ describe("mobile app", () => {
     expect(screen.getByText(/마지막 저장/)).toBeInTheDocument();
   });
 
+  it("shows a synced record's absences in the roster view (desktop-checked)", async () => {
+    // Regression: a record loaded from Drive showed its count in the lesson
+    // list but the roster opened all-present (and saving wiped the record).
+    const user = userEvent.setup();
+    render(
+      <App
+        initialDate="2026-05-04"
+        initialAttendance={{
+          "2026-05-04": {
+            "mon-3": {
+              absences: [{ studentNumber: 3, markType: "absent", note: "" }],
+              checkedAt: "2026-05-04T10:55:00+09:00",
+              source: "pc",
+              syncedToNeis: false,
+              closedOnNeis: false,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/결과.*1명/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /2-1 문학/ }));
+
+    expect(screen.getByText("3번 결과")).toBeInTheDocument();
+  });
+
   it("lets the teacher change the working date", async () => {
     const user = userEvent.setup();
     render(<App initialDate="2026-05-04" />);

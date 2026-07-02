@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  createEmptyMarks,
+  slotAttendanceToMarks,
   cycleMark,
   marksToSlotAttendance,
   type MarksByStudent,
@@ -134,7 +134,8 @@ export default function App({
   const selectedRoster = selectedSlot ? rosters[classKey(selectedSlot)] ?? [] : [];
   const selectedDraftKey = selectedSlot ? `${selectedDate}:${selectedSlot.id}` : "";
   const selectedDraft = selectedSlot
-    ? drafts[selectedDraftKey] ?? createEmptyMarks(selectedRoster)
+    ? drafts[selectedDraftKey] ??
+      slotAttendanceToMarks(selectedRoster, attendanceByDate[selectedDate]?.[selectedSlot.id])
     : {};
   const draftSummary = selectedSlot ? exceptionSummaryFromMarks(selectedDraft) : "";
   const attendanceForDate = attendanceByDate[selectedDate] ?? {};
@@ -157,9 +158,12 @@ export default function App({
   const openLesson = (slot: TimetableSlot) => {
     const roster = rosters[classKey(slot)] ?? [];
     const draftKey = `${selectedDate}:${slot.id}`;
+    // Seed from the synced record (not all-present) so marks checked on the
+    // desktop show up here — and saving doesn't wipe them back to present.
+    const record = attendanceByDate[selectedDate]?.[slot.id];
     setDrafts((current) => ({
       ...current,
-      [draftKey]: current[draftKey] ?? createEmptyMarks(roster),
+      [draftKey]: current[draftKey] ?? slotAttendanceToMarks(roster, record),
     }));
     setSelectedSlotId(slot.id);
   };
@@ -167,7 +171,9 @@ export default function App({
   const toggleStudent = (studentNumber: number) => {
     if (!selectedSlot) return;
     setDrafts((current) => {
-      const draft = current[selectedDraftKey] ?? createEmptyMarks(selectedRoster);
+      const draft =
+        current[selectedDraftKey] ??
+        slotAttendanceToMarks(selectedRoster, attendanceByDate[selectedDate]?.[selectedSlot.id]);
       return {
         ...current,
         [selectedDraftKey]: {
