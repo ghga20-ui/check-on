@@ -153,6 +153,8 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
   const [payload, setPayload] = useState("");
   const [qrUrl, setQrUrl] = useState("");
   const [migrated, setMigrated] = useState<number | null>(null);
+  const [failed, setFailed] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
   const resolveApi = () => (api ? Promise.resolve(api) : getApi());
@@ -177,14 +179,16 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
 
   const enable = async () => {
     setBusy(true);
+    setErrorMsg("");
     try {
       const result = JSON.parse(await (await resolveApi()).enable_sync_encryption());
       if (result.error) throw new Error(result.error);
       setPayload(result.payload);
       setMigrated(result.migrated);
+      setFailed(result.failed ?? 0);
       setEnabled(true);
-    } catch {
-      // status refetch on next mount; keep the card usable
+    } catch (cause) {
+      setErrorMsg(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setBusy(false);
     }
@@ -211,6 +215,7 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
           {enabled === true && !payload && (
             <button className="tb-btn" onClick={() => void showQr()}>휴대폰 연결 QR 보기</button>
           )}
+          {errorMsg && <div className="rhint" style={{color:"#c0392b"}}>오류: {errorMsg}</div>}
         </div><div/>
       </div>
       {payload && (
@@ -220,10 +225,20 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
             <div className="rhint">휴대폰 앱에서 <b>QR코드 스캔</b>을 눌러 촬영하세요. 카메라가 안 되면 아래 연결 코드를 직접 입력해도 됩니다.</div>
             <div className="rhint" style={{marginTop:6}}>⚠ 이 QR·코드는 비밀번호와 같습니다. 화면 공유 중에는 열지 말고, 인쇄해 두면 복구 코드로 쓸 수 있어요.</div>
             {migrated !== null && <div className="rhint" style={{marginTop:6}}>기존 데이터 {migrated}건을 암호화했습니다.</div>}
+            {failed > 0 && (
+              <div className="rhint" style={{marginTop:6, color:"#c0392b"}}>
+                ⚠ {failed}건은 일시적인 오류로 암호화하지 못했습니다. 아래 [다시 시도]를 눌러 주세요.
+              </div>
+            )}
           </div>
           <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:8, alignItems:"flex-start"}}>
             {qrUrl && <img src={qrUrl} alt="휴대폰 연결 QR코드" width={220} height={220} style={{borderRadius:8}}/>}
             <code style={{wordBreak:"break-all", fontSize:11, userSelect:"all"}}>{payload}</code>
+            {failed > 0 && (
+              <button className="tb-btn primary" disabled={busy} onClick={enable}>
+                {busy ? "암호화 중…" : "다시 시도"}
+              </button>
+            )}
             <button className="tb-btn" onClick={() => { setPayload(""); setMigrated(null); }}>닫기</button>
           </div><div/>
         </div>

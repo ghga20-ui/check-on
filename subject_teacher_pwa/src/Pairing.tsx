@@ -44,12 +44,14 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
-      setScanning(true);
+      // The <video> stays mounted (hidden while idle), so the ref is always
+      // available here — attaching after a state-triggered re-render is racy.
       const video = videoRef.current;
       if (!video) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+      setScanning(true);
       video.srcObject = stream;
       await video.play();
       const canvas = document.createElement("canvas");
@@ -102,14 +104,17 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
           주세요.
         </p>
 
-        {scanning ? (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            style={{ width: "100%", borderRadius: 12 }}
-          />
-        ) : (
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          style={{
+            width: "100%",
+            borderRadius: 12,
+            display: scanning ? "block" : "none",
+          }}
+        />
+        {!scanning && (
           <button className="login-btn" type="button" onClick={() => void startScan()}>
             QR코드 스캔
           </button>

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import secrets
 from typing import Any
 
@@ -21,6 +22,8 @@ from subject_teacher.auth.token_store import (
     save_token,
 )
 from subject_teacher.paths import get_sync_key_path
+
+logger = logging.getLogger(__name__)
 
 PAIRING_PREFIX = "checkon.sync.v1:"
 KEY_SIZE = 32
@@ -93,14 +96,24 @@ def pairing_payload(key: bytes) -> str:
     return PAIRING_PREFIX + encoded
 
 
-def migrate_plaintext_to_encrypted(client) -> int:
+def migrate_plaintext_to_encrypted(client) -> tuple[int, int]:
     """Re-write every plaintext appDataFolder file through the (key-injected)
-    client so it lands encrypted. Envelope files are skipped — idempotent."""
+    client so it lands encrypted. Envelope files are skipped — idempotent.
+
+    Best-effort per file: one failure must not strand the rest in plaintext.
+    Returns (migrated, failed); callers surface failed > 0 so the teacher can
+    simply run it again.
+    """
     migrated = 0
+    failed = 0
     for name in client.list_files():
-        raw = client.read_json_raw(name)
-        if raw is None or is_envelope(raw):
-            continue
-        client.upsert_json(name, raw)
-        migrated += 1
-    return migrated
+        try:
+            raw = client.read_json_raw(name)
+            if raw is None or is_envelope(raw):
+                continue
+            client.upsert_json(name, raw)
+            migrated += 1
+        except Exception:
+            logger.warning("migration failed for %s; will retry on next run", name, exc_info=True)
+            failed += 1
+    return migrated, failed

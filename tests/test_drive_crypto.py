@@ -82,9 +82,9 @@ def test_migration_rewrites_plaintext_and_skips_envelopes():
         plain if name == "attendance-2026-07.json" else already
     )
 
-    migrated = crypto.migrate_plaintext_to_encrypted(client)
+    migrated, failed = crypto.migrate_plaintext_to_encrypted(client)
 
-    assert migrated == 1
+    assert (migrated, failed) == (1, 0)
     client.upsert_json.assert_called_once_with("attendance-2026-07.json", plain)
 
 
@@ -93,8 +93,25 @@ def test_migration_noop_on_empty_folder():
 
     client = MagicMock()
     client.list_files.return_value = []
-    assert crypto.migrate_plaintext_to_encrypted(client) == 0
+    assert crypto.migrate_plaintext_to_encrypted(client) == (0, 0)
     client.upsert_json.assert_not_called()
+
+
+def test_migration_continues_past_a_failing_file():
+    # A partial migration must not abort the loop: the crash on 2026-07-02 left
+    # 3 of 7 files plaintext because one SSL error stopped everything.
+    from unittest.mock import MagicMock
+
+    plain = {"schemaVersion": 1}
+    client = MagicMock()
+    client.list_files.return_value = ["a.json", "b.json", "c.json"]
+    client.read_json_raw.return_value = plain
+    client.upsert_json.side_effect = [ConnectionResetError(10054, "reset"), "id-b", "id-c"]
+
+    migrated, failed = crypto.migrate_plaintext_to_encrypted(client)
+
+    assert (migrated, failed) == (2, 1)
+    assert client.upsert_json.call_count == 3
 
 
 def test_sync_key_save_load_roundtrip(tmp_path, monkeypatch):

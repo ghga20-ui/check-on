@@ -31,6 +31,7 @@ def _is_transient_error(exc: Exception) -> bool:
             or "wrong version number" in message
             or "decryption_failed_or_bad_record_mac" in message
             or "bad record mac" in message
+            or "internal error" in message
         )
     return False
 

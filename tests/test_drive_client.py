@@ -64,6 +64,22 @@ def test_find_file_id_retries_transient_ssl_bad_record_mac():
     assert execute.call_count == 2
 
 
+def test_find_file_id_retries_transient_ssl_internal_error():
+    # "[SSL] internal error" is another poisoned-keep-alive symptom (seen when a
+    # second thread raced the shared httplib2 connection). Retry on a fresh socket.
+    execute = MagicMock(side_effect=[
+        ssl.SSLError("[SSL] internal error (_ssl.c:2710)"),
+        {"files": [{"id": "abc123", "name": "settings.json"}]},
+    ])
+    service = MagicMock()
+    service.files.return_value.list.return_value.execute = execute
+
+    client = DriveAppDataClient(service=service)
+
+    assert client.find_file_id("settings.json") == "abc123"
+    assert execute.call_count == 2
+
+
 def test_find_file_id_retries_connection_aborted_10053():
     # WinError 10053 (WSAECONNABORTED): the OS aborted a stale keep-alive socket.
     # Must be treated as transient and retried, not surfaced to the user.

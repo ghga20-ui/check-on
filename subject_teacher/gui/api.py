@@ -73,6 +73,11 @@ SERIALIZED_API_METHODS = {
     "save_mobile_slot_attendance",
     "save_slot_attendance",
     "delete_slot_attendance",
+    # Migration re-writes every Drive file over the shared httplib2 connection;
+    # racing other bridge calls corrupts SSL state (crash on 2026-07-02).
+    "enable_sync_encryption",
+    "get_sync_encryption_status",
+    "get_pairing_payload",
 }
 
 
@@ -531,12 +536,16 @@ class Api:
             # Rebuild the store so the Drive client picks up the key.
             self._store_cache = None
             store = self._store()
-            migrated = crypto.migrate_plaintext_to_encrypted(store.client)
+            migrated, failed = crypto.migrate_plaintext_to_encrypted(store.client)
             self._clear_slot_cache()
-            logger.info("sync encryption enabled (created=%s, migrated=%d)", created, migrated)
+            logger.info(
+                "sync encryption enabled (created=%s, migrated=%d, failed=%d)",
+                created, migrated, failed,
+            )
             return json.dumps({
                 "payload": crypto.pairing_payload(key),
                 "migrated": migrated,
+                "failed": failed,
                 "created": created,
             })
         except Exception as exc:

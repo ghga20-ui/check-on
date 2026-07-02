@@ -63,6 +63,7 @@ export function createMockApi(): DesktopApi {
       ok({
         payload: "checkon.sync.v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
         migrated: 0,
+        failed: 0,
         created: true,
       }),
     get_pairing_payload: () =>

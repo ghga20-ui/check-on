@@ -22,7 +22,7 @@ def test_enable_creates_key_and_migrates(key_dir, monkeypatch):
     api = Api()
     fake_store = MagicMock()
     monkeypatch.setattr(api, "_store", lambda: fake_store)
-    monkeypatch.setattr(crypto, "migrate_plaintext_to_encrypted", lambda client: 3)
+    monkeypatch.setattr(crypto, "migrate_plaintext_to_encrypted", lambda client: (3, 0))
 
     result = json.loads(api.enable_sync_encryption())
 
@@ -38,7 +38,7 @@ def test_enable_is_idempotent_for_existing_key(key_dir, monkeypatch):
     crypto.save_sync_key(key)
     api = Api()
     monkeypatch.setattr(api, "_store", lambda: MagicMock())
-    monkeypatch.setattr(crypto, "migrate_plaintext_to_encrypted", lambda client: 0)
+    monkeypatch.setattr(crypto, "migrate_plaintext_to_encrypted", lambda client: (0, 0))
 
     result = json.loads(api.enable_sync_encryption())
 
@@ -49,3 +49,26 @@ def test_enable_is_idempotent_for_existing_key(key_dir, monkeypatch):
 def test_pairing_payload_null_without_key(key_dir):
     api = Api()
     assert json.loads(api.get_pairing_payload()) == {"payload": None}
+
+
+def test_enable_reports_failed_count(key_dir, monkeypatch):
+    api = Api()
+    monkeypatch.setattr(api, "_store", lambda: MagicMock())
+    monkeypatch.setattr(crypto, "migrate_plaintext_to_encrypted", lambda client: (4, 3))
+
+    result = json.loads(api.enable_sync_encryption())
+
+    assert result["migrated"] == 4
+    assert result["failed"] == 3
+
+
+def test_sync_encryption_methods_are_serialized():
+    # Migration shares the app's single httplib2 connection; running it
+    # concurrently with other bridge calls corrupts SSL state (2026-07-02 crash).
+    from subject_teacher.gui.api import SERIALIZED_API_METHODS
+
+    assert {
+        "enable_sync_encryption",
+        "get_sync_encryption_status",
+        "get_pairing_payload",
+    } <= SERIALIZED_API_METHODS
