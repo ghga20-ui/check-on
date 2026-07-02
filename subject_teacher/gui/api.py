@@ -20,6 +20,7 @@ from subject_teacher.auth.google_oauth import (
     is_reauthentication_error,
     revoke,
 )
+from subject_teacher.drive import crypto
 from subject_teacher.drive.schemas import (
     SCHEMA_VERSION,
     Absence,
@@ -507,6 +508,39 @@ class Api:
             return self.get_drive_user()
         except Exception as exc:
             logger.exception("reconnect failed")
+            return _json_error(exc)
+
+    # ── E2E 동기화 암호화 ─────────────────────────────────────────────────────
+
+    def get_sync_encryption_status(self) -> str:
+        return json.dumps({"enabled": crypto.load_sync_key() is not None})
+
+    def get_pairing_payload(self) -> str:
+        # Never log the payload: it is the raw sync key.
+        key = crypto.load_sync_key()
+        payload = crypto.pairing_payload(key) if key is not None else None
+        return json.dumps({"payload": payload})
+
+    def enable_sync_encryption(self) -> str:
+        try:
+            key = crypto.load_sync_key()
+            created = key is None
+            if created:
+                key = crypto.generate_sync_key()
+                crypto.save_sync_key(key)
+            # Rebuild the store so the Drive client picks up the key.
+            self._store_cache = None
+            store = self._store()
+            migrated = crypto.migrate_plaintext_to_encrypted(store.client)
+            self._clear_slot_cache()
+            logger.info("sync encryption enabled (created=%s, migrated=%d)", created, migrated)
+            return json.dumps({
+                "payload": crypto.pairing_payload(key),
+                "migrated": migrated,
+                "created": created,
+            })
+        except Exception as exc:
+            logger.exception("enable_sync_encryption failed")
             return _json_error(exc)
 
     # ?? ?쒓컙??????????????????????????????????????????????????????????????????

@@ -67,7 +67,9 @@ _students_migrated = False
 def build_store() -> DriveStore:
     global _students_migrated
     credentials = get_credentials()
-    client = DriveAppDataClient(credentials=credentials)
+    from subject_teacher.drive.crypto import load_sync_key
+
+    client = DriveAppDataClient(credentials=credentials, sync_key=load_sync_key())
     if not _students_migrated:
         try:
             from subject_teacher.local_store import migrate_students_from_drive
