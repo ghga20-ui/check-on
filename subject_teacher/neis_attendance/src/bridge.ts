@@ -7,7 +7,7 @@ export interface DesktopApi {
   save_timetable_tsv(tsv: string, effectiveFrom: string): Promise<string>;
   get_students_tsv(): Promise<string>;
   save_students_tsv(tsv: string): Promise<string>;
-  get_today_slots(dateStr: string): Promise<string>;
+  get_today_slots(dateStr: string, force?: boolean): Promise<string>;
   save_slot_attendance(dateStr: string, slotId: string, marksJson: string): Promise<string>;
   delete_slot_attendance(dateStr: string, slotId: string): Promise<string>;
   get_drive_user(): Promise<string>;

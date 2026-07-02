@@ -381,6 +381,46 @@ def test_neis_mode_today_slots_reuses_same_date_cache(monkeypatch):
     assert len(calls) == 1
 
 
+def test_today_slots_force_refresh_bypasses_cache(monkeypatch):
+    # The UI 새로고침 button must show marks another device just wrote; a forced
+    # call drops the 60s slot/monthly caches instead of replaying them.
+    store = FakeStore()
+    store.settings = store.settings.model_copy(
+        update={
+            "timetable_mode": "neis",
+            "assigned_lessons": [
+                {
+                    "grade": 2,
+                    "class_no": "1",
+                    "subject_name": "문학",
+                    "neis_subject_label": "문학",
+                    "subject_aliases": [],
+                }
+            ],
+        }
+    )
+    calls = []
+    monkeypatch.setattr(gui_api, "build_store", lambda: store)
+    monkeypatch.setattr(gui_api, "load_local_neis_api_key", lambda: "KEY")
+    monkeypatch.setattr(
+        gui_api,
+        "query_class_timetable",
+        lambda **kwargs: calls.append(kwargs) or {
+            "school": {"name": "수원고등학교"},
+            "date": kwargs["date_str"],
+            "lessons": [
+                {"day": "월", "period": 2, "grade": 2, "classNo": "1", "subject": "문학", "neis": "문학"},
+            ],
+        },
+    )
+    api = Api()
+
+    api.get_today_slots("2026-04-20")
+    api.get_today_slots("2026-04-20", force=True)
+
+    assert len(calls) == 2
+
+
 def test_publish_neis_timetable_for_week_saves_materialized_slots(monkeypatch):
     store = FakeStore()
     store.settings = store.settings.model_copy(

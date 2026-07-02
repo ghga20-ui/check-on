@@ -764,8 +764,12 @@ class Api:
             logger.exception("_merge_adhoc_slots failed")
             return result
 
-    def get_today_slots(self, date_str: str) -> str:
+    def get_today_slots(self, date_str: str, force: bool = False) -> str:
         try:
+            if force:
+                # 새로고침 button: another device may have just written marks —
+                # drop the 60s slot/monthly caches so this read hits Drive.
+                self._clear_slot_cache(date_str)
             store = self._store()
             settings = self._load_settings_cached(store)
             if settings is not None and settings.timetable_mode == "neis":

@@ -110,12 +110,12 @@ function App() {
       .finally(() => setReconnecting(false));
   };
 
-  const refreshSlots = (dateStr = toIsoDate(date), options: { attempts?: number; silentRetry?: boolean } = {}) => {
+  const refreshSlots = (dateStr = toIsoDate(date), options: { attempts?: number; silentRetry?: boolean; force?: boolean } = {}) => {
     if (!(window.__isPywebview && window.__isPywebview())) return Promise.resolve();
     const attempts = options.attempts || 3;
     setSlotLoading(true);
     setSlotError("");
-    const run = (attempt) => window.pywebview!.api.get_today_slots(dateStr)
+    const run = (attempt) => window.pywebview!.api.get_today_slots(dateStr, !!options.force)
       .then(raw => {
         const data = parseJsonResult(raw);
         if (Array.isArray(data)) setSlots(data);

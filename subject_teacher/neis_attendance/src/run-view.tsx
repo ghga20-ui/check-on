@@ -295,7 +295,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
             <Icon name="plus" size={14}/> 보강 추가
           </button>
           <button className="tb-btn" onClick={() => {
-            if (refreshSlots) refreshSlots(date);
+            if (refreshSlots) refreshSlots(date, { force: true });
           }} disabled={slotLoading}>
             <Icon name={slotLoading ? "clock" : "refresh"} size={14}/> {slotLoading ? "불러오는 중" : "새로고침"}
           </button>
