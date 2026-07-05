@@ -68,5 +68,16 @@ export function createMockApi(): DesktopApi {
       }),
     get_pairing_payload: () =>
       ok({ payload: "checkon.sync.v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8" }),
+    get_recovery_code: () =>
+      ok({ code: "0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-ABCD" }),
+    restore_from_recovery_code: () => ok({ ok: true, decryptsExisting: true }),
+    reissue_sync_key: () =>
+      ok({
+        ok: true,
+        payload: "checkon.sync.v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        recoveryCode: "0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-0000-ABCD",
+        reencrypted: 0,
+        failed: 0,
+      }),
   };
 }

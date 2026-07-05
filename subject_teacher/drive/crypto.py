@@ -7,6 +7,7 @@ generated on the desktop, shown once as a pairing QR, and never leaves the devic
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import logging
 import secrets
@@ -37,6 +38,75 @@ class EnvelopeError(ValueError):
 
 class SyncKeyMissingError(RuntimeError):
     """An encrypted file was found but no sync key is stored on this device."""
+
+
+class RecoveryCodeError(ValueError):
+    """A recovery code is the wrong length, has bad characters, or fails its checksum."""
+
+
+# Crockford Base32: uppercase, excludes I L O U to avoid transcription ambiguity.
+_CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+_CROCKFORD_INDEX = {c: i for i, c in enumerate(_CROCKFORD)}
+# Human aliases so a hand-copied code still decodes.
+_CROCKFORD_INDEX.update({"O": 0, "I": 1, "L": 1})
+_RECOVERY_CHECKSUM_SIZE = 3  # bytes of SHA-256(key) appended for typo detection
+
+
+def _crockford_encode(data: bytes) -> str:
+    bits = 0
+    nbits = 0
+    out: list[str] = []
+    for byte in data:
+        bits = (bits << 8) | byte
+        nbits += 8
+        while nbits >= 5:
+            nbits -= 5
+            out.append(_CROCKFORD[(bits >> nbits) & 0x1F])
+    if nbits:
+        out.append(_CROCKFORD[(bits << (5 - nbits)) & 0x1F])
+    return "".join(out)
+
+
+def _crockford_decode(text: str) -> bytes:
+    bits = 0
+    nbits = 0
+    out = bytearray()
+    for ch in text:
+        try:
+            val = _CROCKFORD_INDEX[ch]
+        except KeyError as exc:
+            raise RecoveryCodeError("복구 코드에 사용할 수 없는 문자가 있습니다.") from exc
+        bits = (bits << 5) | val
+        nbits += 5
+        if nbits >= 8:
+            nbits -= 8
+            out.append((bits >> nbits) & 0xFF)
+    return bytes(out)
+
+
+def recovery_code(key: bytes) -> str:
+    """A transcription-friendly backup of the sync key: 14 hyphen-separated groups."""
+    if len(key) != KEY_SIZE:
+        raise ValueError("key must be 32 bytes")
+    payload = key + hashlib.sha256(key).digest()[:_RECOVERY_CHECKSUM_SIZE]
+    code = _crockford_encode(payload)  # 35 bytes -> 56 chars
+    return "-".join(code[i : i + 4] for i in range(0, len(code), 4))
+
+
+def parse_recovery_code(text: str) -> bytes:
+    """Decode a recovery code back to the 32-byte key, verifying the checksum.
+
+    Tolerant of case, hyphens/spaces, and 0/O · 1/I/L transcription slips.
+    """
+    normalized = "".join(text.upper().split()).replace("-", "")
+    expected_len = ((KEY_SIZE + _RECOVERY_CHECKSUM_SIZE) * 8 + 4) // 5  # 56
+    if len(normalized) != expected_len:
+        raise RecoveryCodeError("복구 코드 길이가 올바르지 않습니다. 하이픈을 빼고 56자인지 확인해 주세요.")
+    raw = _crockford_decode(normalized)
+    key, checksum = raw[:KEY_SIZE], raw[KEY_SIZE : KEY_SIZE + _RECOVERY_CHECKSUM_SIZE]
+    if hashlib.sha256(key).digest()[:_RECOVERY_CHECKSUM_SIZE] != checksum:
+        raise RecoveryCodeError("복구 코드가 올바르지 않습니다. 입력을 다시 확인해 주세요.")
+    return key
 
 
 def is_envelope(raw: Any) -> bool:
@@ -117,3 +187,28 @@ def migrate_plaintext_to_encrypted(client) -> tuple[int, int]:
             logger.warning("migration failed for %s; will retry on next run", name, exc_info=True)
             failed += 1
     return migrated, failed
+
+
+def reencrypt_from_old_key(client, old_key: bytes) -> tuple[int, int]:
+    """Re-key every file: decrypt with ``old_key`` and re-write through the client,
+    which must already be writing with the NEW key. Plaintext files are just
+    re-written (and thus newly encrypted).
+
+    Used by key re-issue after a suspected leak: the old key becomes useless once
+    every file is re-encrypted. Best-effort per file, returning (reencrypted, failed)
+    so a partial failure can be retried without stranding files on mixed keys.
+    """
+    reencrypted = 0
+    failed = 0
+    for name in client.list_files():
+        try:
+            raw = client.read_json_raw(name)
+            if raw is None:
+                continue
+            data = decrypt_envelope(name, raw, old_key) if is_envelope(raw) else raw
+            client.upsert_json(name, data)
+            reencrypted += 1
+        except Exception:
+            logger.warning("re-encrypt failed for %s; will retry on next run", name, exc_info=True)
+            failed += 1
+    return reencrypted, failed

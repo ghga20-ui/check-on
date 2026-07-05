@@ -78,6 +78,9 @@ SERIALIZED_API_METHODS = {
     "enable_sync_encryption",
     "get_sync_encryption_status",
     "get_pairing_payload",
+    "get_recovery_code",
+    "restore_from_recovery_code",
+    "reissue_sync_key",
 }
 
 
@@ -553,6 +556,80 @@ class Api:
             return _json_error(exc)
 
     # ?? ?쒓컙??????????????????????????????????????????????????????????????????
+
+    def get_recovery_code(self) -> str:
+        # Never log the code: it encodes the raw sync key.
+        key = crypto.load_sync_key()
+        code = crypto.recovery_code(key) if key is not None else None
+        return json.dumps({"code": code})
+
+    def restore_from_recovery_code(self, code: str) -> str:
+        try:
+            try:
+                candidate = crypto.parse_recovery_code(code)
+            except crypto.RecoveryCodeError as exc:
+                return json.dumps({"ok": False, "error": str(exc)})
+
+            # Verify the code actually opens this account's encrypted data before
+            # storing it. On a fresh PC with no encrypted files yet, accept as-is.
+            found_envelope = False
+            decrypts = False
+            client = self._store().client
+            for name in client.list_files():
+                try:
+                    raw = client.read_json_raw(name)
+                except Exception:
+                    continue
+                if not crypto.is_envelope(raw):
+                    continue
+                found_envelope = True
+                try:
+                    crypto.decrypt_envelope(name, raw, candidate)
+                    decrypts = True
+                    break
+                except crypto.EnvelopeError:
+                    continue
+            if found_envelope and not decrypts:
+                return json.dumps({
+                    "ok": False,
+                    "error": "이 복구 코드로는 이 계정의 기존 데이터를 열 수 없습니다. 코드를 다시 확인해 주세요.",
+                })
+
+            crypto.save_sync_key(candidate)
+            self._store_cache = None
+            self._clear_slot_cache()
+            logger.info("sync key restored from recovery code (decryptsExisting=%s)", decrypts)
+            return json.dumps({"ok": True, "decryptsExisting": decrypts})
+        except Exception as exc:
+            logger.exception("restore_from_recovery_code failed")
+            return _json_error(exc)
+
+    def reissue_sync_key(self) -> str:
+        try:
+            old_key = crypto.load_sync_key()
+            if old_key is None:
+                return json.dumps({
+                    "ok": False,
+                    "error": "먼저 암호화를 켜야 재발급할 수 있습니다.",
+                })
+            new_key = crypto.generate_sync_key()
+            crypto.save_sync_key(new_key)
+            # Rebuild the store so the Drive client writes with the new key.
+            self._store_cache = None
+            store = self._store()
+            reencrypted, failed = crypto.reencrypt_from_old_key(store.client, old_key)
+            self._clear_slot_cache()
+            logger.info("sync key reissued (reencrypted=%d, failed=%d)", reencrypted, failed)
+            return json.dumps({
+                "ok": True,
+                "payload": crypto.pairing_payload(new_key),
+                "recoveryCode": crypto.recovery_code(new_key),
+                "reencrypted": reencrypted,
+                "failed": failed,
+            })
+        except Exception as exc:
+            logger.exception("reissue_sync_key failed")
+            return _json_error(exc)
 
     def get_timetable_tsv(self) -> str:
         try:

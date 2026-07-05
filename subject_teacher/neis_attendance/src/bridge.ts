@@ -25,6 +25,9 @@ export interface DesktopApi {
   get_sync_encryption_status(): Promise<string>;
   enable_sync_encryption(): Promise<string>;
   get_pairing_payload(): Promise<string>;
+  get_recovery_code(): Promise<string>;
+  restore_from_recovery_code(code: string): Promise<string>;
+  reissue_sync_key(): Promise<string>;
 }
 
 /** A log line pushed from Python via evaluate_js("window.__pushLog(...)"). */

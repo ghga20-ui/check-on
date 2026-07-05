@@ -114,6 +114,87 @@ def test_migration_continues_past_a_failing_file():
     assert client.upsert_json.call_count == 3
 
 
+def test_recovery_code_roundtrip():
+    code = crypto.recovery_code(KEY)
+    groups = code.split("-")
+    assert len(groups) == 14
+    assert all(len(g) == 4 for g in groups)
+    assert code == code.upper()
+    assert crypto.parse_recovery_code(code) == KEY
+
+
+def test_recovery_code_tolerates_case_and_separators():
+    code = crypto.recovery_code(KEY)
+    messy = " " + code.lower().replace("-", "  ") + " \n"
+    assert crypto.parse_recovery_code(messy) == KEY
+
+
+def test_recovery_code_maps_ambiguous_characters():
+    # A teacher may transcribe 0/O and 1/I/L interchangeably.
+    code = crypto.recovery_code(KEY)
+    swapped = code.replace("0", "O").replace("1", "I")
+    assert crypto.parse_recovery_code(swapped) == KEY
+
+
+def test_recovery_code_detects_single_character_typo():
+    code = crypto.recovery_code(KEY)
+    # Change the first data character to a different valid Crockford symbol.
+    first = code[0]
+    replacement = "Z" if first != "Z" else "2"
+    typo = replacement + code[1:]
+    with pytest.raises(crypto.RecoveryCodeError):
+        crypto.parse_recovery_code(typo)
+
+
+def test_recovery_code_rejects_wrong_length():
+    with pytest.raises(crypto.RecoveryCodeError):
+        crypto.parse_recovery_code("ABCD-1234")
+
+
+def test_recovery_code_rejects_invalid_character():
+    code = crypto.recovery_code(KEY)
+    # 'U' is excluded from the Crockford alphabet and is not a mapped alias.
+    bad = "U" + code[1:]
+    with pytest.raises(crypto.RecoveryCodeError):
+        crypto.parse_recovery_code(bad)
+
+
+def test_reencrypt_decrypts_with_old_key_and_rewrites():
+    from unittest.mock import MagicMock
+
+    old_key = KEY
+    doc = {"schemaVersion": 1, "records": {"2026-07-01": {"3": "absent"}}}
+    envelope = crypto.encrypt_envelope("attendance-2026-07.json", doc, old_key)
+    plaintext_file = {"schemaVersion": 1, "slots": []}
+    client = MagicMock()
+    client.list_files.return_value = ["attendance-2026-07.json", "timetable.json"]
+    client.read_json_raw.side_effect = lambda name: (
+        envelope if name == "attendance-2026-07.json" else plaintext_file
+    )
+
+    reencrypted, failed = crypto.reencrypt_from_old_key(client, old_key)
+
+    assert (reencrypted, failed) == (2, 0)
+    # The envelope is decrypted with the OLD key; upsert re-encrypts with the new key.
+    client.upsert_json.assert_any_call("attendance-2026-07.json", doc)
+    client.upsert_json.assert_any_call("timetable.json", plaintext_file)
+
+
+def test_reencrypt_continues_past_a_failing_file():
+    from unittest.mock import MagicMock
+
+    doc = {"schemaVersion": 1}
+    client = MagicMock()
+    client.list_files.return_value = ["a.json", "b.json"]
+    # Each file carries an envelope bound to its own name (AAD).
+    client.read_json_raw.side_effect = lambda name: crypto.encrypt_envelope(name, doc, KEY)
+    client.upsert_json.side_effect = [ConnectionResetError(10054, "reset"), "id-b"]
+
+    reencrypted, failed = crypto.reencrypt_from_old_key(client, KEY)
+
+    assert (reencrypted, failed) == (1, 1)
+
+
 def test_sync_key_save_load_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setattr(crypto, "get_sync_key_path", lambda: tmp_path / "sync_key.bin")
     assert crypto.load_sync_key() is None

@@ -156,6 +156,11 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
   const [failed, setFailed] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [payloadMode, setPayloadMode] = useState<"enable" | "reissue">("enable");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [showRestore, setShowRestore] = useState(false);
+  const [restoreInput, setRestoreInput] = useState("");
+  const [restoreMsg, setRestoreMsg] = useState("");
 
   const resolveApi = () => (api ? Promise.resolve(api) : getApi());
 
@@ -183,6 +188,7 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
     try {
       const result = JSON.parse(await (await resolveApi()).enable_sync_encryption());
       if (result.error) throw new Error(result.error);
+      setPayloadMode("enable");
       setPayload(result.payload);
       setMigrated(result.migrated);
       setFailed(result.failed ?? 0);
@@ -196,7 +202,57 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
 
   const showQr = async () => {
     const result = JSON.parse(await (await resolveApi()).get_pairing_payload());
-    if (result.payload) { setMigrated(null); setPayload(result.payload); }
+    if (result.payload) { setPayloadMode("enable"); setMigrated(null); setFailed(0); setPayload(result.payload); }
+  };
+
+  const showRecoveryCode = async () => {
+    setErrorMsg("");
+    try {
+      const result = JSON.parse(await (await resolveApi()).get_recovery_code());
+      if (result.code) setRecoveryCode(result.code);
+    } catch (cause) {
+      setErrorMsg(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const restore = async () => {
+    setBusy(true);
+    setRestoreMsg("");
+    try {
+      const result = JSON.parse(await (await resolveApi()).restore_from_recovery_code(restoreInput));
+      if (!result.ok) { setRestoreMsg(result.error || "복원에 실패했습니다."); return; }
+      setEnabled(true);
+      setShowRestore(false);
+      setRestoreInput("");
+      setRestoreMsg(result.decryptsExisting
+        ? "복원했습니다. 이 PC에서 기존 데이터를 다시 열 수 있습니다."
+        : "복원했습니다.");
+    } catch (cause) {
+      setRestoreMsg(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reissue = async () => {
+    if (!window.confirm(
+      "열쇠를 재발급하면 이전 열쇠는 무효가 됩니다. 연결해 둔 휴대폰은 새 QR로 다시 연결해야 합니다. 계속할까요?",
+    )) return;
+    setBusy(true);
+    setErrorMsg("");
+    try {
+      const result = JSON.parse(await (await resolveApi()).reissue_sync_key());
+      if (!result.ok) throw new Error(result.error || "재발급에 실패했습니다.");
+      setPayloadMode("reissue");
+      setMigrated(null);
+      setFailed(result.failed ?? 0);
+      setRecoveryCode(result.recoveryCode || "");
+      setPayload(result.payload);
+    } catch (cause) {
+      setErrorMsg(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -222,18 +278,79 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
             </div>
           )}
         </div>
-        <div className="rctrl">
+        <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:8, alignItems:"stretch"}}>
           {enabled === false && (
             <button className="tb-btn primary" disabled={busy} onClick={enable}>
               {busy ? "암호화 중…" : "암호화 켜기"}
             </button>
           )}
+          {enabled === false && (
+            <button className="tb-btn" onClick={() => { setShowRestore(v => !v); setRestoreMsg(""); }}>
+              복구 코드로 복원
+            </button>
+          )}
           {enabled === true && !payload && (
-            <button className="tb-btn" onClick={() => void showQr()}>휴대폰 연결 QR 보기</button>
+            <>
+              <button className="tb-btn" onClick={() => void showQr()}>휴대폰 연결 QR 보기</button>
+              <button className="tb-btn" onClick={() => void showRecoveryCode()}>복구 코드 저장</button>
+              <button className="tb-btn" disabled={busy} onClick={() => void reissue()}>열쇠 재발급</button>
+            </>
           )}
           {errorMsg && <div className="rhint" style={{color:"#c0392b"}}>오류: {errorMsg}</div>}
         </div><div/>
       </div>
+
+      {restoreMsg && (
+        <div className="form-row">
+          <div className="rhint" style={{color: restoreMsg.startsWith("복원했") ? "#1e8e3e" : "#c0392b"}}>
+            {restoreMsg}
+          </div><div/><div/>
+        </div>
+      )}
+
+      {showRestore && enabled !== true && (
+        <div className="form-row">
+          <div>
+            <div className="rlabel">복구 코드로 복원</div>
+            <div className="rhint">
+              예전에 저장해 둔 <b>복구 코드</b>를 입력하면 이 PC에서 기존 암호화 데이터를 다시 열 수 있습니다
+              (PC를 새로 설치했거나 교체한 경우). 코드가 이 계정의 데이터를 실제로 열 수 있어야 복원됩니다.
+            </div>
+          </div>
+          <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:8, alignItems:"stretch"}}>
+            <input
+              value={restoreInput}
+              onChange={e => setRestoreInput(e.target.value)}
+              placeholder="XXXX-XXXX-…-XXXX"
+              spellCheck={false}
+              autoComplete="off"
+              style={{minWidth:220}}
+            />
+            <button className="tb-btn primary" disabled={busy || !restoreInput.trim()} onClick={() => void restore()}>
+              {busy ? "복원 중…" : "복원"}
+            </button>
+          </div><div/>
+        </div>
+      )}
+
+      {recoveryCode && (
+        <div className="form-row">
+          <div>
+            <div className="rlabel">복구 코드</div>
+            <div className="rhint">
+              이 코드를 <b>종이에 적어 안전한 곳에 보관</b>하세요. PC가 고장 나거나 초기화되어도 이
+              코드로 데이터를 되살릴 수 있습니다. 코드는 비밀번호와 같으니 남에게 보이지 마세요.
+            </div>
+          </div>
+          <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:8, alignItems:"flex-start"}}>
+            <code style={{wordBreak:"break-all", fontSize:12, userSelect:"all", letterSpacing:0.5}}>{recoveryCode}</code>
+            <div style={{display:"flex", gap:8}}>
+              <button className="tb-btn" onClick={() => { void navigator.clipboard?.writeText(recoveryCode); }}>복사</button>
+              <button className="tb-btn" onClick={() => setRecoveryCode("")}>닫기</button>
+            </div>
+          </div><div/>
+        </div>
+      )}
       {payload && (
         <div className="form-row">
           <div>
@@ -244,17 +361,28 @@ export const SyncEncryptionCard = ({ api }: { api?: DesktopApi }) => {
               연결 코드를 직접 입력해도 됩니다.
             </div>
             <div className="rhint" style={{marginTop:6}}>⚠ 이 QR·코드는 비밀번호와 같습니다. 화면 공유 중에는 열지 말고, 인쇄해 두면 복구 코드로 쓸 수 있어요.</div>
+            {payloadMode === "reissue" && (
+              <div className="rhint" style={{marginTop:6}}>
+                🔑 열쇠를 새로 발급했습니다. 이전 열쇠는 더 이상 쓸 수 없으니, <b>연결된 휴대폰을 위 QR로 다시 연결</b>하고
+                아래 새 복구 코드를 저장하세요.
+              </div>
+            )}
             {migrated !== null && <div className="rhint" style={{marginTop:6}}>기존 데이터 {migrated}건을 암호화했습니다.</div>}
-            {failed > 0 && (
+            {failed > 0 && payloadMode === "enable" && (
               <div className="rhint" style={{marginTop:6, color:"#c0392b"}}>
                 ⚠ {failed}건은 일시적인 오류로 암호화하지 못했습니다. 아래 [다시 시도]를 눌러 주세요.
+              </div>
+            )}
+            {failed > 0 && payloadMode === "reissue" && (
+              <div className="rhint" style={{marginTop:6, color:"#c0392b"}}>
+                ⚠ {failed}건을 재암호화하지 못했습니다. 그 파일은 아직 이전 열쇠로 남아 있을 수 있으니 네트워크 확인 후 다시 시도해 주세요.
               </div>
             )}
           </div>
           <div className="rctrl" style={{display:"flex", flexDirection:"column", gap:8, alignItems:"flex-start"}}>
             {qrUrl && <img src={qrUrl} alt="휴대폰 연결 QR코드" width={220} height={220} style={{borderRadius:8}}/>}
             <code style={{wordBreak:"break-all", fontSize:11, userSelect:"all"}}>{payload}</code>
-            {failed > 0 && (
+            {failed > 0 && payloadMode === "enable" && (
               <button className="tb-btn primary" disabled={busy} onClick={enable}>
                 {busy ? "암호화 중…" : "다시 시도"}
               </button>
