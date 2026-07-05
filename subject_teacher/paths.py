@@ -2,9 +2,19 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 APP_DIR_NAME = "NeisSubject"
+
+
+def _bundle_dir() -> Path | None:
+    """Directory of files bundled into a PyInstaller EXE, or None in dev."""
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return Path(meipass)
+    return None
 
 
 def get_app_data_dir() -> Path:
@@ -30,11 +40,23 @@ def get_neis_api_key_path() -> Path:
 
 
 def get_client_secrets_path() -> Path:
-    project_root = Path(__file__).resolve().parent.parent
-    project_path = project_root / "client_secrets.json"
+    # 1) User-provided override in app data wins, so credentials can be rotated
+    #    on an installed machine without shipping a new build.
+    override = get_app_data_dir() / "client_secrets.json"
+    if override.exists():
+        return override
+    # 2) Bundled inside the packaged EXE (installed-app OAuth client).
+    bundle = _bundle_dir()
+    if bundle is not None:
+        bundled = bundle / "client_secrets.json"
+        if bundled.exists():
+            return bundled
+    # 3) Dev: repo root.
+    project_path = Path(__file__).resolve().parent.parent / "client_secrets.json"
     if project_path.exists():
         return project_path
-    return get_app_data_dir() / "client_secrets.json"
+    # 4) Fallback — also where the "not found" error tells users to drop the file.
+    return override
 
 
 def get_students_path() -> Path:

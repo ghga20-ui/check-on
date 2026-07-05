@@ -12,6 +12,13 @@ datas = [
     ),
 ]
 
+# Bundle the installed-app OAuth client if present (gitignored, so builds on a
+# machine without it still succeed — the app then reads it from %LOCALAPPDATA%).
+# Resolved at runtime via paths.get_client_secrets_path() from sys._MEIPASS.
+_client_secrets = ROOT / "client_secrets.json"
+if _client_secrets.exists():
+    datas.append((str(_client_secrets), "."))
+
 hiddenimports = [
     "clr_loader",
     "googleapiclient.discovery",
