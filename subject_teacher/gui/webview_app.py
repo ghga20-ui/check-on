@@ -2,11 +2,27 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import webview
 
 from subject_teacher.gui.api import Api
+
+
+def _apply_windows_icon(window, icon_path: Path) -> None:
+    """Set the native WinForms window icon (title bar + taskbar).
+
+    pywebview's ``webview.start(icon=...)`` is GTK/QT-only, so on Windows the
+    running app showed the default form icon in the taskbar. Cosmetic only —
+    never let a failure here block startup.
+    """
+    try:
+        from System.Drawing import Icon  # pythonnet, present on win32
+
+        window.native.Icon = Icon(str(icon_path))
+    except Exception:
+        pass
 
 
 def _html_url() -> str:
@@ -25,6 +41,16 @@ def _html_url() -> str:
 
 
 def start() -> None:
+    if sys.platform == "win32":
+        # Give the process its own taskbar identity so Windows groups the app
+        # under the 체크온 icon instead of the Python/host default.
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("CheckOn.Desktop")
+        except Exception:
+            pass
+
     api = Api()
     window = webview.create_window(
         title="체크온 · 교과 출결",
@@ -44,8 +70,11 @@ def start() -> None:
     icon_path = here.parent / "neis_attendance" / "dist" / "favicon.ico"
     if not icon_path.exists():
         icon_path = here.parent / "neis_attendance" / "public" / "favicon.ico"
+    if icon_path.exists() and sys.platform == "win32":
+        window.events.shown += lambda: _apply_windows_icon(window, icon_path)
     try:
         if icon_path.exists():
+            # GTK/QT path; ignored on Windows (handled via the shown event above).
             webview.start(debug=False, icon=str(icon_path))
         else:
             webview.start(debug=False)
