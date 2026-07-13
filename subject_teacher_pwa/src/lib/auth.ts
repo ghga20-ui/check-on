@@ -43,6 +43,39 @@ let tokenClient: TokenClient | null = null;
 let accessToken: string | null = null;
 let tokenExpiresAt = 0;
 
+// Boolean flag only — access tokens themselves are never persisted (§5).
+const AUTHED_FLAG_KEY = "checkon.hasAuthed";
+
+/**
+ * True when this browser completed a Google sign-in before. Gates the
+ * on-load auto sign-in: GIS's token model opens a visible Google window
+ * even for "silent" requests, so first-time visitors must not trigger one
+ * until they tap the login button themselves.
+ */
+export function hasSignedInBefore(): boolean {
+  try {
+    return localStorage.getItem(AUTHED_FLAG_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markSignedIn(): void {
+  try {
+    localStorage.setItem(AUTHED_FLAG_KEY, "1");
+  } catch {
+    // Private mode without storage — the teacher just logs in per visit.
+  }
+}
+
+function clearSignedIn(): void {
+  try {
+    localStorage.removeItem(AUTHED_FLAG_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 /** True when a web client ID is configured. */
 export function isConfigured(): boolean {
   return typeof CLIENT_ID === "string" && CLIENT_ID.length > 0;
@@ -88,10 +121,12 @@ export async function initAuth(): Promise<void> {
 }
 
 /**
- * Request an access token. With `silent: true` GIS attempts a no-UI refresh;
- * for the first sign-in pass `silent: false` to show the consent prompt.
+ * Request an access token. Uses `prompt: ""` so Google decides what UI is
+ * needed: first-time users get the consent screen, returning users with an
+ * active session sail through. (The old `prompt: "consent"` forced the full
+ * consent screen on every login.)
  */
-export function requestAccessToken({ silent }: { silent: boolean }): Promise<string> {
+export function requestAccessToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!tokenClient) {
       reject(new Error("auth가 초기화되지 않았습니다. initAuth()를 먼저 호출하세요."));
@@ -104,9 +139,10 @@ export function requestAccessToken({ silent }: { silent: boolean }): Promise<str
       }
       accessToken = response.access_token;
       tokenExpiresAt = Date.now() + (response.expires_in ?? 3600) * 1000;
+      markSignedIn();
       resolve(accessToken);
     };
-    tokenClient.requestAccessToken({ prompt: silent ? "" : "consent" });
+    tokenClient.requestAccessToken({ prompt: "" });
   });
 }
 
@@ -115,7 +151,7 @@ export async function getValidAccessToken(): Promise<string> {
   if (accessToken && Date.now() < tokenExpiresAt - 60_000) {
     return accessToken;
   }
-  return requestAccessToken({ silent: true });
+  return requestAccessToken();
 }
 
 /** Current cached token without triggering a refresh (may be null/expired). */
@@ -130,6 +166,7 @@ export function revoke(): Promise<void> {
     const token = accessToken;
     accessToken = null;
     tokenExpiresAt = 0;
+    clearSignedIn();
     if (token && oauth2) {
       oauth2.revoke(token, () => resolve());
     } else {

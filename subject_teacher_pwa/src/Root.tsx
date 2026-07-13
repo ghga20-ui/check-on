@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import App from "./App";
 import Login from "./Login";
 import Pairing from "./Pairing";
-import { initAuth, isConfigured, requestAccessToken, revoke } from "./lib/auth";
+import { hasSignedInBefore, initAuth, isConfigured, requestAccessToken, revoke } from "./lib/auth";
 import { PairingRequiredError } from "./lib/drive";
 import {
   loadAll,
@@ -45,12 +45,19 @@ export default function Root() {
       setError("VITE_GOOGLE_CLIENT_ID 가 설정되지 않았습니다.");
       return;
     }
+    // First visit on this browser: never open a Google window before the
+    // teacher taps 로그인 — GIS "silent" requests still show a visible window,
+    // which then appears AGAIN for the button-triggered sign-in.
+    if (!hasSignedInBefore()) {
+      setPhase("signedOut");
+      return;
+    }
     let cancelled = false;
-    // Try a silent sign-in first so a returning teacher (active Google session)
-    // lands straight in the app without tapping the login button every visit.
+    // Returning teacher (has signed in here before): try the auto sign-in so
+    // an active Google session lands straight in the app.
     initAuth()
       .then(() => Promise.race([
-        requestAccessToken({ silent: true }),
+        requestAccessToken(),
         // Never let a hung silent attempt keep us on the splash forever.
         new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("silent-timeout")), 3500)),
       ]))
@@ -80,7 +87,8 @@ export default function Root() {
     setError("");
     setPhase("loading");
     try {
-      await requestAccessToken({ silent: false });
+      await initAuth();
+      await requestAccessToken();
       const loaded = await loadAll(today.slice(0, 7));
       setData(loaded);
       setPhase("ready");
