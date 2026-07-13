@@ -486,13 +486,25 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sb-head">
-          <div className="sb-logo"><BrandMark size={24}/></div>
+          <div
+            className="sb-logo"
+            role={sidebarCollapsed ? "button" : undefined}
+            title={sidebarCollapsed ? "메뉴 펼치기" : undefined}
+            style={sidebarCollapsed ? { cursor: "pointer" } : undefined}
+            onClick={sidebarCollapsed ? () => setSidebarCollapsed(false) : undefined}
+          ><BrandMark size={24}/></div>
           <div className="sb-name-wrap">
             <div className="sb-name">체크온</div>
             <div className="sb-sub">교과 출결</div>
           </div>
-          <button className="sb-collapse" onClick={() => setSidebarCollapsed(c => !c)} title="사이드바 접기">
-            <Icon name={sidebarCollapsed ? "chev-r" : "chev-l"} size={16}/>
+          <button
+            className="sb-collapse"
+            onClick={() => setSidebarCollapsed(c => !c)}
+            title={sidebarCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
+            aria-label={sidebarCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
+            aria-expanded={!sidebarCollapsed}
+          >
+            <Icon name={sidebarCollapsed ? "panel-r" : "panel-l"} size={18}/>
           </button>
         </div>
 

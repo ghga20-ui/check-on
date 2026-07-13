@@ -60,6 +60,11 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
+[UninstallDelete]
+; NEIS 인증서 비밀번호는 언인스톨 시 함께 파기 (개인정보처리방침의 파기 조항과 일치).
+; sync_key.bin(E2E 열쇠)·토큰·설정은 재설치 시 복구에 필요할 수 있어 삭제하지 않는다.
+Type: files; Name: "{localappdata}\NeisSubject\password.bin"
+
 [Code]
 // Warn (do not block) when the Evergreen WebView2 Runtime is missing — the UI needs it.
 function WebView2Installed(): Boolean;

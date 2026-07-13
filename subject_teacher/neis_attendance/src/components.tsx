@@ -23,6 +23,8 @@ export const Icon = ({ name, size = 18, stroke = 1.6 }) => {
   const common = { width: s, height: s, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: stroke, strokeLinecap: "round", strokeLinejoin: "round" } as React.SVGProps<SVGSVGElement>;
   switch (name) {
     case "bolt":     return <svg {...common}><path d="M11.5 2L4.5 11.2h4L8 18l7-9.4h-4L11.5 2z"/></svg>;
+    case "panel-l":  return <svg {...common}><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M7.5 3.5v13"/><path d="M13.5 8l-2 2 2 2"/></svg>;
+    case "panel-r":  return <svg {...common}><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M7.5 3.5v13"/><path d="M11 8l2 2-2 2"/></svg>;
     case "gear":     return <svg {...common}><circle cx="10" cy="10" r="2.2"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>;
     case "board":    return <svg {...common}><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M2.5 8H17.5M7 3.5v13"/></svg>;
     case "users":    return <svg {...common}><circle cx="8" cy="7.5" r="2.6"/><path d="M3.5 16.2c.5-2.6 2.4-3.9 4.5-3.9s4 1.3 4.5 3.9"/><circle cx="14.2" cy="7" r="1.9"/><path d="M13 12.5c2.5 0 3.8 1.5 4.2 3.5"/></svg>;
