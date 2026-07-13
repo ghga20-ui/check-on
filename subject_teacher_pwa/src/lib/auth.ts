@@ -43,39 +43,6 @@ let tokenClient: TokenClient | null = null;
 let accessToken: string | null = null;
 let tokenExpiresAt = 0;
 
-// Boolean flag only — access tokens themselves are never persisted (§5).
-const AUTHED_FLAG_KEY = "checkon.hasAuthed";
-
-/**
- * True when this browser completed a Google sign-in before. Gates the
- * on-load auto sign-in: GIS's token model opens a visible Google window
- * even for "silent" requests, so first-time visitors must not trigger one
- * until they tap the login button themselves.
- */
-export function hasSignedInBefore(): boolean {
-  try {
-    return localStorage.getItem(AUTHED_FLAG_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markSignedIn(): void {
-  try {
-    localStorage.setItem(AUTHED_FLAG_KEY, "1");
-  } catch {
-    // Private mode without storage — the teacher just logs in per visit.
-  }
-}
-
-function clearSignedIn(): void {
-  try {
-    localStorage.removeItem(AUTHED_FLAG_KEY);
-  } catch {
-    // ignore
-  }
-}
-
 /** True when a web client ID is configured. */
 export function isConfigured(): boolean {
   return typeof CLIENT_ID === "string" && CLIENT_ID.length > 0;
@@ -139,7 +106,6 @@ export function requestAccessToken(): Promise<string> {
       }
       accessToken = response.access_token;
       tokenExpiresAt = Date.now() + (response.expires_in ?? 3600) * 1000;
-      markSignedIn();
       resolve(accessToken);
     };
     tokenClient.requestAccessToken({ prompt: "" });
@@ -166,7 +132,6 @@ export function revoke(): Promise<void> {
     const token = accessToken;
     accessToken = null;
     tokenExpiresAt = 0;
-    clearSignedIn();
     if (token && oauth2) {
       oauth2.revoke(token, () => resolve());
     } else {

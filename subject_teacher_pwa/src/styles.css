@@ -513,11 +513,15 @@ details[open] .privacy-footer summary::before,
   box-shadow: 0 10px 24px rgba(10, 132, 255, .3);
 }
 .login-card h1 {
-  font-family: "CheckOnWordmark", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   font-size: 34px;
+  margin-bottom: 6px;
+}
+/* 브랜드명("체크온") 전용 — CheckOnWordmark 서브셋에는 "체크온CheckOn" 글리프만
+   있으므로 다른 텍스트(예: 페어링 화면 h1)에 걸면 폰트가 섞여 깨진다. */
+.brand-wordmark {
+  font-family: "CheckOnWordmark", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   font-weight: 400; /* Bagel Fat One is single-weight; avoid synthetic bold */
   letter-spacing: 0.01em;
-  margin-bottom: 6px;
 }
 .login-sub { color: var(--muted); font-size: 15px; line-height: 1.5; margin-bottom: 24px; }
 .login-tagline { font-size: 15px; color: var(--fg); font-weight: 600; margin-bottom: 20px; }
