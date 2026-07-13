@@ -1,3 +1,5 @@
+import BrandMark from "./BrandMark";
+
 interface LoginProps {
   onSignIn: () => void;
   busy?: boolean;
@@ -10,7 +12,7 @@ export default function Login({ onSignIn, busy, error, notConfigured }: LoginPro
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-mark" aria-hidden="true">✓</div>
+        <div className="login-mark" aria-hidden="true"><BrandMark size={52} /></div>
         <h1>체크온</h1>
         <p className="login-tagline">수업 직후, 스마트폰으로 1초 출결</p>
 

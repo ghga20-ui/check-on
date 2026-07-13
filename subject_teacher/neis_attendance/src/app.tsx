@@ -1,5 +1,5 @@
 import React from "react";
-import { Icon } from "./components";
+import { BrandMark, Icon } from "./components";
 import { LogDock } from "./log-panel";
 import { RunView } from "./run-view";
 import { BasicsView, TimetableView, RosterView, PlaceholderView, ConnectionView } from "./setup-view";
@@ -486,7 +486,7 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sb-head">
-          <div className="sb-logo"><Icon name="check" size={22}/></div>
+          <div className="sb-logo"><BrandMark size={24}/></div>
           <div className="sb-name-wrap">
             <div className="sb-name">체크온</div>
             <div className="sb-sub">교과 출결</div>

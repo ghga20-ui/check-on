@@ -1,5 +1,5 @@
 import React from "react";
-import { Icon } from "./components";
+import { BrandMark, Icon } from "./components";
 
 /** First-run setup guide. Steps mark themselves done from real app state and
  *  jump to the matching tab. Re-openable from the sidebar ("시작 가이드"). */
@@ -9,7 +9,7 @@ export const OnboardingGuide = ({ steps, onGo, onClose }) => {
     <div className="ob-overlay" role="dialog" aria-modal="true" aria-label="시작 가이드">
       <div className="ob-card">
         <div className="ob-head">
-          <div className="ob-logo"><Icon name="check" size={20}/></div>
+          <div className="ob-logo"><BrandMark size={22}/></div>
           <div className="ob-head-text">
             <h2>체크온 시작하기</h2>
             <div className="ob-sub">아래 순서로 준비하면 수업 출결이 자동으로 정리됩니다. ({doneCount}/{steps.length} 완료)</div>

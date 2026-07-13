@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import App from "./App";
+import BrandMark from "./BrandMark";
 import Login from "./Login";
 import Pairing from "./Pairing";
 import { hasSignedInBefore, initAuth, isConfigured, requestAccessToken, revoke } from "./lib/auth";
@@ -116,7 +117,7 @@ export default function Root() {
   if (phase === "init") {
     return (
       <div className="splash">
-        <div className="splash-mark" aria-hidden="true">✓</div>
+        <div className="splash-mark" aria-hidden="true"><BrandMark size={38} /></div>
         <p>불러오는 중…</p>
       </div>
     );
