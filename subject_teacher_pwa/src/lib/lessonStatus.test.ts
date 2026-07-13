@@ -68,7 +68,7 @@ describe("mobile lesson status helpers", () => {
     expect(computeLessonDisplayStatus()).toEqual({
       kind: "unchecked",
       checked: false,
-      compactLabel: "미체크",
+      compactLabel: "미확인",
       summaryText: "아직 출결을 확인하지 않았습니다.",
       absenceCount: 0,
     });
@@ -91,8 +91,8 @@ describe("mobile lesson status helpers", () => {
 
     expect(status.kind).toBe("exceptions");
     expect(status.absenceCount).toBe(2);
-    expect(status.summaryText).toBe("3번 결과, 12번 출석인정");
-    expect(status.compactLabel).toBe("결과·출석인정 2명");
+    expect(status.summaryText).toBe("3번 결과, 12번 인정결과");
+    expect(status.compactLabel).toBe("결과·인정결과 2명");
   });
 
   it("distinguishes Drive and NEIS sync metadata states", () => {

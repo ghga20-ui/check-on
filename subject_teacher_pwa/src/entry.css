@@ -1,0 +1,99 @@
+/* Entry-screen styles owned by the entry/data agent (Root, Login, Pairing,
+   PrivacyPolicy). styles.css belongs to another agent; these rules only add
+   scoped classes and never override shared ones. */
+
+/* --- Splash wordmark (C안: 진입 화면은 브랜드 허용 구역) --- */
+.splash-wordmark {
+  font-size: 26px;
+  color: var(--fg);
+  margin: 0;
+}
+
+/* --- Privacy policy: keep the sticky header opaque so the scrolling body
+       never bleeds through the title on iOS momentum scroll. --- */
+.policy-panel .sheet-head {
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  padding-bottom: 10px;
+}
+
+/* --- Pairing screen --- */
+.pairing-lead {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fg);
+  margin: 0 0 14px;
+  text-align: left;
+}
+.pairing-steps {
+  text-align: left;
+  margin: 0 0 18px;
+  padding-left: 20px;
+  line-height: 1.7;
+  font-size: 14px;
+  color: var(--fg);
+}
+.pairing-steps li { margin-bottom: 2px; }
+
+.qr-scan { margin-bottom: 6px; }
+
+.qr-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+}
+.qr-viewport.hidden { display: none; }
+.qr-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Corner-bracket aiming frame overlaid on the camera feed. */
+.qr-frame {
+  position: absolute;
+  inset: 14%;
+  pointer-events: none;
+}
+.qr-c {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 3px solid #fff;
+}
+.qr-c.tl { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 6px; }
+.qr-c.tr { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 6px; }
+.qr-c.bl { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 6px; }
+.qr-c.br { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 6px; }
+
+.qr-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.pairing-code-label {
+  display: block;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: left;
+}
+.pairing-connect {
+  width: 100%;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 15px;
+  padding: 14px 16px;
+  font-weight: 800;
+  font-size: 16px;
+}
+.pairing-connect:disabled { opacity: .5; }

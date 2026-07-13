@@ -4,14 +4,44 @@
   --green: #30D158;
   --orange: #FF9F0A;
   --red: #FF453A;
+  /* Unified status inks (WCAG AA on their tinted chips). */
+  --ok-ink: #248A3D;
+  --warn-ink: #C77A00;
+  --bad-ink: #D70015;
   --bg: #F2F2F7;
   --panel: #FFFFFF;
   --fg: #111114;
   --muted: #565660;
   --sep: rgba(60, 60, 67, .14);
+  --chip: #E5E5EA;        /* neutral control fill */
+  --ring-track: #E5E5EA;  /* progress-ring remainder */
+  --nav-bg: rgba(246, 246, 248, .86);
+  --grabber: rgba(60, 60, 67, .28);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard", "Apple SD Gothic Neo", sans-serif;
   color: var(--fg);
   background: var(--bg);
+}
+
+/* Dark tokens ported from the desktop app (subject_teacher styles.css). The
+   PWA follows the OS theme since it has no in-app theme switch. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-ink: #68B0FF;
+    --ok-ink: #5AD87A;
+    --warn-ink: #FFC15A;
+    --bad-ink: #FF7A6E;
+    --bg: #000000;
+    --panel: #1C1C1E;
+    --fg: #F5F5F7;
+    --muted: #9E9EA4;
+    --sep: rgba(255, 255, 255, .10);
+    --chip: #2C2C2E;
+    --ring-track: #2C2C2E;
+    --nav-bg: rgba(22, 22, 24, .86);
+    --grabber: rgba(255, 255, 255, .28);
+    color: var(--fg);
+    background: var(--bg);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -20,10 +50,41 @@ button { font: inherit; color: inherit; }
 
 .mobile-app {
   min-height: 100vh;
+  min-height: 100dvh;
   max-width: 480px;
   margin: 0 auto;
   padding: max(18px, env(safe-area-inset-top)) 18px calc(86px + env(safe-area-inset-bottom));
   background: var(--bg);
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.round-btn {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sep);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+}
+.stale-badge {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .top {
@@ -70,11 +131,16 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: conic-gradient(var(--accent) 0 35%, #E5E5EA 35% 100%);
+  background: conic-gradient(var(--accent) 0 var(--ring-pct, 0%), var(--ring-track) var(--ring-pct, 0%) 100%);
   color: var(--fg);
   font-weight: 800;
   font-size: 13px;
   box-shadow: inset 0 0 0 9px var(--panel);
+}
+/* Completion is C안's "브랜드 감정" moment — the ring goes fully green. */
+.ring.complete {
+  background: var(--ok-ink);
+  color: #fff;
 }
 
 .lesson-list {
@@ -86,20 +152,54 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
 
 .lesson-card {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sep);
+  border-radius: 18px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.lesson-card.checked {
+  border: 2px solid var(--green);
+  background: rgba(48, 209, 88, .05);
+}
+.lesson-card.now {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, .12);
+}
+.lesson-open {
+  width: 100%;
   display: grid;
   grid-template-columns: 64px 1fr auto;
   align-items: center;
   gap: 12px;
   min-height: 78px;
   padding: 14px;
-  border: 1px solid var(--sep);
-  border-radius: 18px;
-  background: var(--panel);
+  border: 0;
+  background: transparent;
   text-align: left;
 }
-.lesson-card.checked {
-  border: 2px solid var(--green);
-  background: rgba(48, 209, 88, .05);
+.lesson-allpresent {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-top: 1px solid var(--sep);
+  background: transparent;
+  color: var(--accent-ink);
+  font-weight: 800;
+  font-size: 14px;
+  padding: 11px;
+}
+.now-badge {
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .period {
@@ -131,37 +231,37 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   align-items: center;
   border-radius: 999px;
   padding: 3px 7px;
-  background: #E5E5EA;
+  background: var(--chip);
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
 }
 .mini-status.pending {
   background: rgba(255, 159, 10, .16);
-  color: #B76A00;
+  color: var(--warn-ink);
 }
 .mini-status.synced {
   background: rgba(48, 209, 88, .16);
-  color: #1B7A33;
+  color: var(--ok-ink);
 }
 .mini-status.failed {
   background: rgba(255, 69, 58, .16);
-  color: #C42017;
+  color: var(--bad-ink);
 }
-/* Icons so Drive status is not conveyed by colour alone (colour-blind safe). */
-.mini-status.pending::before { content: "⏳"; margin-right: 4px; }
+/* Text glyphs (not emoji) so status is not conveyed by colour alone. */
+.mini-status.pending::before { content: "◷"; margin-right: 4px; font-weight: 900; }
 .mini-status.synced::before { content: "✓"; margin-right: 4px; font-weight: 900; }
 .mini-status.failed::before { content: "✕"; margin-right: 4px; font-weight: 900; }
 
 .status {
   border-radius: 999px;
   padding: 5px 8px;
-  background: #E5E5EA;
+  background: var(--chip);
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
 }
-.status.done { background: rgba(48, 209, 88, .16); color: #248A3D; }
+.status.done { background: rgba(48, 209, 88, .16); color: var(--ok-ink); }
 .status.done::before { content: "✓ "; font-weight: 900; }
 
 .empty-card,
@@ -214,12 +314,125 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
 }
 .status-grid span {
   border-radius: 12px;
-  background: #F2F2F7;
+  background: var(--bg);
   padding: 10px 6px;
   text-align: center;
   font-size: 12px;
   font-weight: 800;
 }
+
+/* Full-screen settings (opened from the header gear) */
+.settings-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: min(480px, 100%);
+  margin: 0 auto;
+  background: var(--bg);
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: max(18px, env(safe-area-inset-top)) 18px 12px;
+}
+.settings-head h1 { font-size: 28px; }
+.settings-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 18px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* Full-screen overlay for re-entry pairing from 설정 > 보안 */
+.fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+}
+
+/* 기록 tab: month calendar with per-day status dots */
+.calendar-card {
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid var(--sep);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.calendar-head strong { font-size: 16px; }
+.calendar-head .round-btn { width: 44px; height: 44px; border: 0; background: var(--bg); font-size: 22px; }
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-cell {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 4px 0;
+}
+.cal-cell.empty { pointer-events: none; }
+.cal-cell.sel { background: rgba(10, 132, 255, .14); }
+.cal-cell.sel .cal-day { color: var(--accent-ink); font-weight: 800; }
+.cal-day { font-size: 14px; font-weight: 600; }
+.cal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--chip);
+}
+.cal-dot.done { background: var(--ok-ink); }
+.cal-dot.unchecked { background: var(--warn-ink); }
+.cal-dot.failed { background: var(--bad-ink); }
+.calendar-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.calendar-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.record-day { margin-top: 16px; }
+.record-day-title {
+  font-size: 18px;
+  margin: 0 2px;
+}
+.record-day .lesson-list { margin-top: 10px; }
 
 .bottom-nav {
   position: fixed;
@@ -231,7 +444,7 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   padding: 10px 18px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(246, 246, 248, .86);
+  background: var(--nav-bg);
   border-top: 1px solid var(--sep);
   backdrop-filter: blur(22px);
 }
@@ -239,13 +452,14 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
 .bottom-nav button {
   border: 0;
   border-radius: 12px;
+  min-height: 44px;
   padding: 10px;
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
-.bottom-nav .on { background: var(--panel); color: var(--accent); }
+.bottom-nav .on { background: var(--panel); color: var(--accent-ink); }
 
 .sheet {
   position: fixed;
@@ -255,19 +469,34 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   justify-content: center;
   background: rgba(0, 0, 0, .38);
   z-index: 10;
+  animation: sheet-fade .25s ease-out;
 }
 
 .sheet-panel {
   width: min(480px, 100%);
   max-height: 88vh;
+  max-height: 88dvh;
   display: flex;
   flex-direction: column;
   padding: 8px 18px calc(18px + env(safe-area-inset-bottom));
   border-radius: 24px 24px 0 0;
   background: var(--bg);
+  animation: sheet-up .25s cubic-bezier(.22, 1, .36, 1);
 }
 .compact-sheet {
   max-height: 360px;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-fade {
+  from { background: rgba(0, 0, 0, 0); }
+  to { background: rgba(0, 0, 0, .38); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .sheet-panel { animation: none; }
 }
 
 .grabber {
@@ -275,7 +504,7 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   height: 5px;
   margin: 4px auto 16px;
   border-radius: 999px;
-  background: rgba(60, 60, 67, .28);
+  background: var(--grabber);
 }
 
 .sheet-head {
@@ -290,7 +519,7 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   height: 44px;
   border: 0;
   border-radius: 50%;
-  background: #E5E5EA;
+  background: var(--chip);
   color: var(--fg);
   font-size: 24px;
   line-height: 1;
@@ -298,65 +527,80 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
 
 .legend {
   display: flex;
+  align-items: center;
   gap: 12px;
-  margin: 18px 0 12px;
+  flex-wrap: wrap;
+  margin: 16px 0 10px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
 }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-hint { margin-left: auto; font-weight: 600; font-size: 11.5px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot.present { background: var(--green); }
 .dot.absent { background: var(--red); }
 .dot.excused { background: var(--orange); }
 
-.students {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 계기판: number-chip grid — 28 students fit one 390×844 screen. */
+.chip-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+  align-content: start;
   overflow: auto;
-  padding-bottom: 14px;
+  padding-bottom: 12px;
   /* Absorb remaining sheet height and scroll internally so the summary and
      save/cancel actions stay pinned and visible without scrolling. */
   flex: 1 1 auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
-
-.student-row {
-  display: grid;
-  grid-template-columns: 34px 1fr 54px;
+.chip {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  border: 1px solid transparent;
-  border-radius: 15px;
-  padding: 12px 14px;
+  justify-content: center;
+  gap: 1px;
+  min-height: 62px;
+  padding: 6px 2px;
+  border: 1.5px solid var(--sep);
+  border-radius: 14px;
   background: var(--panel);
-  text-align: left;
-  transition: transform .05s ease, background-color .1s ease;
+  transition: transform .05s ease, background-color .1s ease, border-color .1s ease;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
-.student-row:active {
-  transform: scale(.99);
-  background: rgba(10, 132, 255, .06);
-}
-.student-row span { color: var(--muted); font-size: 13px; font-weight: 700; }
-.student-row strong { font-size: 16px; }
-.student-row em {
-  justify-self: end;
-  min-width: 42px;
-  text-align: center;
-  border-radius: 999px;
-  padding: 5px 7px;
-  background: rgba(48, 209, 88, .16);
-  color: #248A3D;
-  font-style: normal;
-  font-size: 12px;
+.chip:active { transform: scale(.96); }
+.chip-no {
+  font-size: 20px;
   font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
-.student-row[data-mark="absent"] { border-color: rgba(255, 69, 58, .28); }
-.student-row[data-mark="absent"] em { background: rgba(255, 69, 58, .15); color: #D70015; }
-.student-row[data-mark="excused"] { border-color: rgba(255, 159, 10, .32); }
-.student-row[data-mark="excused"] em { background: rgba(255, 159, 10, .18); color: #B76A00; }
+.chip-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip[data-mark="absent"] {
+  background: rgba(255, 69, 58, .14);
+  border-color: var(--bad-ink);
+}
+.chip[data-mark="absent"] .chip-no { color: var(--bad-ink); }
+.chip[data-mark="absent"] .chip-name { color: var(--bad-ink); }
+.chip[data-mark="excused"] {
+  background: rgba(255, 159, 10, .16);
+  border-color: var(--warn-ink);
+}
+.chip[data-mark="excused"] .chip-no { color: var(--warn-ink); }
+.chip[data-mark="excused"] .chip-name { color: var(--warn-ink); }
 
 .draft-summary {
   display: flex;
@@ -409,12 +653,14 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
 .sheet-actions button {
   border: 0;
   border-radius: 15px;
+  min-height: 44px;
   padding: 14px 16px;
   font-weight: 800;
   font-size: 16px;
 }
-.secondary { background: #E5E5EA; color: var(--muted); }
-.primary { background: var(--accent); color: #fff; }
+.secondary { background: var(--chip); color: var(--fg); }
+.primary { background: var(--accent); color: #fff; font-weight: 800; }
+.primary.wide { width: 100%; margin-top: 12px; border: 0; border-radius: 13px; min-height: 44px; padding: 12px 16px; font-size: 15px; }
 
 /* Privacy notice */
 .privacy-banner {
@@ -438,8 +684,9 @@ h2 { font-size: 24px; line-height: 1.12; letter-spacing: 0; }
   background: var(--accent);
   color: #fff;
   font-size: 13px;
-  font-weight: 700;
-  padding: 7px 14px;
+  font-weight: 800;
+  min-height: 44px;
+  padding: 7px 16px;
 }
 .privacy-footer {
   margin-top: 18px;
@@ -484,6 +731,7 @@ details[open] .privacy-footer summary::before,
 /* Login */
 .login-screen {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -560,6 +808,7 @@ details[open] .privacy-footer summary::before,
 /* First-load splash while a silent sign-in is attempted */
 .splash {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -586,11 +835,12 @@ details[open] .privacy-footer summary::before,
   margin-top: 12px;
   border: 0;
   border-radius: 12px;
+  min-height: 44px;
   padding: 11px 16px;
   font-size: 14px;
   font-weight: 700;
   background: rgba(255, 69, 58, .1);
-  color: var(--red);
+  color: var(--bad-ink);
 }
 .login-btn {
   width: 100%;
@@ -635,27 +885,29 @@ button:focus:not(:focus-visible) { outline: none; }
 }
 .status-banner.offline {
   background: rgba(255, 159, 10, .14);
-  color: #8A4B00;
+  color: var(--warn-ink);
   border: 1px solid rgba(255, 159, 10, .32);
 }
 .status-banner.failed {
   background: rgba(255, 69, 58, .12);
-  color: #C42017;
+  color: var(--bad-ink);
   border: 1px solid rgba(255, 69, 58, .28);
 }
 .status-banner button {
   flex: 0 0 auto;
   border: 0;
   border-radius: 10px;
-  padding: 8px 14px;
+  min-height: 44px;
+  padding: 8px 16px;
   background: var(--red);
   color: #fff;
   font-weight: 800;
   font-size: 13px;
 }
 
-/* Transient save confirmation */
+/* Transient save confirmation — never intercepts taps under it */
 .toast {
+  pointer-events: none;
   position: fixed;
   left: 50%;
   bottom: calc(96px + env(safe-area-inset-bottom));
@@ -682,7 +934,7 @@ button:focus:not(:focus-visible) { outline: none; }
   text-decoration: underline;
   padding: 0;
 }
-.policy-panel { max-height: 88vh; }
+.policy-panel { max-height: 88vh; max-height: 88dvh; }
 .policy-body {
   flex: 1 1 auto;
   min-height: 0;

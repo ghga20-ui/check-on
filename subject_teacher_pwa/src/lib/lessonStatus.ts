@@ -27,7 +27,7 @@ const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목
 
 const MARK_LABELS: Record<MarkType, string> = {
   absent: "결과",
-  excused: "출석인정",
+  excused: "인정결과",
 };
 
 export function selectedDateLabel(isoDate: string): string {
@@ -53,7 +53,7 @@ export function computeLessonDisplayStatus(
     return {
       kind: "unchecked",
       checked: false,
-      compactLabel: "미체크",
+      compactLabel: "미확인",
       summaryText: "아직 출결을 확인하지 않았습니다.",
       absenceCount: 0,
     };
@@ -107,7 +107,7 @@ function getSyncedKind(attendance: SlotAttendance, sync: LessonSyncMetadata): Le
 }
 
 function getSyncCompactLabel(kind: LessonStatusKind): string {
-  if (kind === "neisSynced") return "NEIS 반영";
+  if (kind === "neisSynced") return "NEIS 반영됨";
   if (kind === "driveFailed") return "Drive 실패";
   if (kind === "drivePending") return "Drive 대기";
   if (kind === "driveSynced") return "Drive 저장";

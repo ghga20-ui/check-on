@@ -11,7 +11,9 @@ import {
   saveSlotAttendance,
   type LoadedDriveData,
 } from "./lib/driveData";
+import { clearDriveCache, loadDriveCache, saveDriveCache } from "./lib/localCache";
 import type { StudentEntry, TimetableSlot } from "./lib/schemas";
+import "./entry.css";
 
 type Phase = "init" | "signedOut" | "loading" | "ready" | "error" | "pairing";
 
@@ -38,6 +40,9 @@ export default function Root() {
   const [phase, setPhase] = useState<Phase>("init");
   const [error, setError] = useState("");
   const [data, setData] = useState<LoadedDriveData | null>(null);
+  // stale=true means `data` came from the local cache and has not been
+  // reconciled with Drive yet (App shows a "refresh" affordance).
+  const [stale, setStale] = useState(false);
   const today = toLocalIsoDate();
 
   useEffect(() => {
@@ -46,21 +51,48 @@ export default function Root() {
       setError("VITE_GOOGLE_CLIENT_ID 가 설정되지 않았습니다.");
       return;
     }
-    // Never open a Google window on page load — GIS token requests show a
-    // visible window even with prompt: "". Sign-in happens only when the
-    // teacher taps the login button (signIn below).
-    setPhase("signedOut");
+    // Cache-first, never a Google window on load. GIS token requests always show
+    // a visible window even with prompt: "", so on mount we only read the local
+    // snapshot. A real refresh happens later from a user gesture (onRefresh).
+    let cancelled = false;
+    loadDriveCache()
+      .then((cached) => {
+        if (cancelled) return;
+        if (cached) {
+          setData(cached.data);
+          setStale(true);
+          setPhase("ready");
+        } else {
+          setPhase("signedOut");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPhase("signedOut");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Fetch fresh Drive data, render it, and refresh the local cache. Assumes a
+  // valid access token is already in memory (caller obtained it under a gesture).
+  const loadFresh = async () => {
+    const month = today.slice(0, 7);
+    const loaded = await loadAll(month);
+    setData(loaded);
+    setStale(false);
+    setPhase("ready");
+    await saveDriveCache(loaded, month);
+  };
+
+  // First sign-in from the login screen: obtain a token, load, cache.
   const signIn = async () => {
     setError("");
     setPhase("loading");
     try {
       await initAuth();
       await requestAccessToken();
-      const loaded = await loadAll(today.slice(0, 7));
-      setData(loaded);
-      setPhase("ready");
+      await loadFresh();
     } catch (cause) {
       if (cause instanceof PairingRequiredError) {
         setPhase("pairing");
@@ -71,13 +103,32 @@ export default function Root() {
     }
   };
 
+  // Revalidate from Drive while App stays on screen (stale banner button).
+  // Runs in the user-gesture context so requestAccessToken may show its window.
+  const refresh = async () => {
+    setError("");
+    try {
+      await initAuth();
+      await requestAccessToken();
+      await loadFresh();
+    } catch (cause) {
+      if (cause instanceof PairingRequiredError) {
+        setPhase("pairing");
+        return;
+      }
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
   const signOut = async () => {
     try {
       await revoke();
     } catch {
       // ignore — clearing local state below is what matters
     }
+    await clearDriveCache();
     setData(null);
+    setStale(false);
     setError("");
     setPhase("signedOut");
   };
@@ -86,6 +137,7 @@ export default function Root() {
     return (
       <div className="splash">
         <div className="splash-mark" aria-hidden="true"><BrandMark size={38} /></div>
+        <p className="brand-wordmark splash-wordmark">체크온</p>
         <p>불러오는 중…</p>
       </div>
     );
@@ -100,21 +152,20 @@ export default function Root() {
       <Pairing
         onPaired={() => {
           setPhase("loading");
-          loadAll(today.slice(0, 7))
-            .then((loaded) => {
-              setData(loaded);
-              setPhase("ready");
-            })
-            .catch((cause) => {
-              setPhase("signedOut");
-              setError(cause instanceof Error ? cause.message : String(cause));
-            });
+          loadFresh().catch((cause) => {
+            setPhase("signedOut");
+            setError(cause instanceof Error ? cause.message : String(cause));
+          });
         }}
       />
     );
   }
 
   if (phase === "ready" && data) {
+    // A↔B contract: App gains optional `stale`/`onRefresh` props in a sibling
+    // change. Spread them so this file does not depend on which change lands
+    // first (see report — a transient tsc error is expected until then).
+    const swrProps = { stale, onRefresh: refresh };
     return (
       <App
         initialDate={today}
@@ -127,6 +178,7 @@ export default function Root() {
         }
         onLoadMonth={async (month) => (await loadMonthlyAttendance(month))?.records ?? {}}
         onSignOut={signOut}
+        {...swrProps}
       />
     );
   }

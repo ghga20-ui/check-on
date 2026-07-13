@@ -39,6 +39,7 @@ export default function Login({ onSignIn, busy, error, notConfigured }: LoginPro
             </p>
           </>
         )}
+        <a className="policy-link" href="/privacy">개인정보처리방침</a>
       </div>
     </div>
   );

@@ -10,8 +10,12 @@ import type { SaveQueueItem } from "./offlineQueue";
 const DB_NAME = "neis-subject";
 const STORE = "saveQueue";
 // v2: adds the `keys` store holding the E2E sync key (see keyStore.ts).
-const VERSION = 2;
+// v3: adds the `driveCache` store for the stale-while-revalidate snapshot of
+//     LoadedDriveData (see localCache.ts). Student names may appear here, but
+//     that is fine on-device; tokens are never cached.
+const VERSION = 3;
 export const KEYS_STORE = "keys";
+export const CACHE_STORE = "driveCache";
 
 export function hasIndexedDB(): boolean {
   return typeof indexedDB !== "undefined";
@@ -27,6 +31,9 @@ export function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(KEYS_STORE)) {
         db.createObjectStore(KEYS_STORE);
+      }
+      if (!db.objectStoreNames.contains(CACHE_STORE)) {
+        db.createObjectStore(CACHE_STORE);
       }
     };
     request.onsuccess = () => resolve(request.result);

@@ -76,7 +76,7 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
           {searchError && (
             <div className="form-row">
               <div><div className="rhint">안내</div></div>
-              <div className="rctrl" style={{color:"#C42017", fontSize:13}}>{searchError}</div>
+              <div className="rctrl" style={{color:"var(--bad-ink)", fontSize:13}}>{searchError}</div>
               <div/>
             </div>
           )}

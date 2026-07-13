@@ -59,7 +59,7 @@ describe("mobile attendance draft helpers", () => {
   });
 
   it("summarizes checked lessons for the today list", () => {
-    expect(summarizeLesson(undefined)).toEqual({ checked: false, label: "미체크", absenceCount: 0 });
+    expect(summarizeLesson(undefined)).toEqual({ checked: false, label: "미확인", absenceCount: 0 });
     expect(summarizeLesson(marksToSlotAttendance({ 1: "present" }, "2026-05-04T10:55:00+09:00"))).toEqual({
       checked: true,
       label: "전원 출석",
@@ -67,7 +67,7 @@ describe("mobile attendance draft helpers", () => {
     });
     expect(summarizeLesson(marksToSlotAttendance({ 1: "absent", 2: "excused" }, "2026-05-04T10:55:00+09:00"))).toEqual({
       checked: true,
-      label: "결과·출석인정 2명",
+      label: "결과·인정결과 2명",
       absenceCount: 2,
     });
   });

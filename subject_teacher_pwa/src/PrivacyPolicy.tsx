@@ -1,5 +1,7 @@
 /** 개인정보처리방침 — 전문(요지) 화면. 설정 탭에서 진입한다.
  *  정본: docs/legal/privacy-policy.md */
+import "./entry.css";
+
 export function PrivacyPolicy({ onClose }: { onClose: () => void }) {
   return (
     <div className="sheet" role="dialog" aria-modal="true" aria-label="개인정보처리방침">
@@ -40,9 +42,9 @@ export function PrivacyPolicy({ onClose }: { onClose: () => void }) {
             없습니다.</p>
 
           <h3>5. NEIS 인증서 비밀번호 (데스크톱 앱)</h3>
-          <p><b>데스크톱 앱에서</b> NEIS 출결 자동 입력 시 인증서 로그인을 자동으로 수행하기 위해
-            <b>NEIS 인증서 비밀번호</b>를 입력받습니다. 비밀번호는 교사 PC의
-            <b>%LOCALAPPDATA%\NeisSubject</b> 폴더(password.bin)에 Windows DPAPI로 암호화되어
+          <p><b>데스크톱 앱에서</b> NEIS 출결 자동 입력 시 인증서 로그인을 자동으로 수행하기 위해{" "}
+            <b>NEIS 인증서 비밀번호</b>를 입력받습니다. 비밀번호는 교사 PC의{" "}
+            <b>%LOCALAPPDATA%\NeisSubject</b> 폴더(password.bin)에 Windows DPAPI로 암호화되어{" "}
             <b>PC에만 저장</b>되며, 해당 Windows 사용자 계정에서만 복호화됩니다. 클라우드(Google Drive)·서버
             등 외부로는 절대 전송·저장되지 않으며, NEIS 로그인 자동화에만 사용됩니다. 데스크톱 앱 실행
             화면의 비밀번호 입력란을 비우고 저장하면 저장된 값이 빈 값으로 대체(삭제)되고, 위 폴더의

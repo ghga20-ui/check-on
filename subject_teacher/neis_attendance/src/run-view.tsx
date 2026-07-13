@@ -327,7 +327,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
           <div className="inline-progress">
             <div className="ip-row">
               <strong>
-                {running ? "NEIS 반영 중" : "마지막 실행 완료"}
+                {running ? "반영 중…" : "마지막 실행 완료"}
               </strong>
               {progress.current && <span className="ip-cur">· {progress.current}</span>}
               <span className="ip-count">{progress.done}/{progress.total} ({Math.round(progress.done/Math.max(progress.total,1)*100)}%)</span>
@@ -358,7 +358,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
           <div className="stat-card accent">
             <div className="label"><span className="dot"/>해당 날짜 수업</div>
             <div className="value">{total}<span className="unit">건</span></div>
-            <div className="note">{formatDateSubtext(date)} · 출결 확인 {checked} / 아직 확인 안 함 {total - checked}</div>
+            <div className="note">{formatDateSubtext(date)} · 확인함 {checked} / 미확인 {total - checked}</div>
           </div>
           <div className="stat-card">
             <div className="label"><span className="dot" style={{background:"var(--orange)"}}/>NEIS 반영</div>
@@ -414,7 +414,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
                         <Chip kind="ok"><Icon name="check" size={11}/> 확인함 · {s.absences}명</Chip>
                         {s.checkedAt && <div className="sub2">{formatSavedAt(s.checkedAt)}</div>}
                       </>
-                    : <Chip kind="gray">아직 확인 안 함</Chip>}
+                    : <Chip kind="gray">미확인</Chip>}
                 </div>
                 <div className="status-stack">
                   <StatusChip item={s}/>

@@ -4,9 +4,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
+import BrandMark from "./BrandMark";
 import { parsePairingPayload } from "./lib/crypto";
 import { saveSyncKey } from "./lib/keyStore";
 import { resetSyncKeyCache } from "./lib/drive";
+import "./entry.css";
 
 interface QrDetector {
   detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>>;
@@ -19,14 +21,24 @@ function makeBarcodeDetector(): QrDetector | null {
   return ctor ? new ctor({ formats: ["qr_code"] }) : null;
 }
 
+type ErrorAt = "scan" | "code" | null;
+
 export default function Pairing({ onPaired }: { onPaired: () => void }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  // Which control the current error belongs under, so it renders at the point
+  // it occurred instead of far away at the bottom of the card.
+  const [errorAt, setErrorAt] = useState<ErrorAt>(null);
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const stopRef = useRef<() => void>(() => {});
 
-  const accept = async (text: string) => {
+  const fail = (message: string, where: Exclude<ErrorAt, null>) => {
+    setError(message);
+    setErrorAt(where);
+  };
+
+  const accept = async (text: string, where: Exclude<ErrorAt, null> = "code") => {
     try {
       const key = parsePairingPayload(text);
       await saveSyncKey(key);
@@ -34,12 +46,13 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
       stopRef.current();
       onPaired();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "연결 코드 형식이 올바르지 않습니다.");
+      fail(cause instanceof Error ? cause.message : "연결 코드 형식이 올바르지 않습니다.", where);
     }
   };
 
   const startScan = async () => {
     setError("");
+    setErrorAt(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -54,11 +67,15 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
       setScanning(true);
       video.srcObject = stream;
       await video.play();
+      // Bring the viewport (and the hint/cancel button under it) into view —
+      // the video expands where the scan button was, low on a long card.
+      video.scrollIntoView?.({ behavior: "smooth", block: "center" });
       const canvas = document.createElement("canvas");
       let active = true;
       stopRef.current = () => {
         active = false;
         stream.getTracks().forEach((track) => track.stop());
+        video.srcObject = null;
         setScanning(false);
       };
       const detector = makeBarcodeDetector();
@@ -79,7 +96,7 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
           }
         }
         if (text) {
-          await accept(text);
+          await accept(text, "scan");
           return;
         }
         requestAnimationFrame(() => void tick());
@@ -87,74 +104,88 @@ export default function Pairing({ onPaired }: { onPaired: () => void }) {
       void tick();
     } catch {
       setScanning(false);
-      setError("카메라를 열 수 없습니다. 아래에 연결 코드를 직접 입력해 주세요.");
+      fail("카메라를 열 수 없습니다. 연결 코드를 직접 입력해 주세요.", "scan");
     }
   };
+
+  const cancelScan = () => stopRef.current();
 
   useEffect(() => () => stopRef.current(), []);
 
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-mark" aria-hidden="true">🔒</div>
-        <h1>데스크톱과 연결</h1>
-        <p className="login-tagline">
-          선생님의 출결 데이터는 <b>암호화</b>되어 있어, 구글을 포함한 누구도 내용을 볼 수
-          없습니다. 이 휴대폰에서 읽으려면 데스크톱과 한 번 연결해 열쇠를 받아야 해요.
-        </p>
-        <p className="login-note" style={{ marginTop: 4 }}>
-          ✓ <b>처음 한 번만</b> 하면 됩니다 — 이후에는 자동으로 연결됩니다.
+        <div className="login-mark" aria-hidden="true"><BrandMark size={44} /></div>
+        <h1 className="brand-wordmark">체크온</h1>
+        <p className="login-tagline">데스크톱과 한 번만 연결</p>
+        <p className="pairing-lead">
+          출결 데이터는 <b>암호화</b>되어 있어 구글을 포함한 누구도 내용을 볼 수 없습니다.
+          이 휴대폰에서 열려면 데스크톱과 한 번 연결해 열쇠를 받아야 해요.
+          <b> 처음 한 번만</b> 하면 이후에는 자동으로 연결됩니다.
         </p>
 
-        <ol style={{ textAlign: "left", margin: "12px 0", paddingLeft: 20, lineHeight: 1.7 }}>
+        <ol className="pairing-steps">
           <li>PC에서 <b>체크온 데스크톱 앱</b>을 엽니다</li>
           <li><b>설정 → 기본 정보</b> 맨 아래 <b>모바일 연결 암호화</b>로 이동</li>
-          <li><b>[암호화 켜기]</b> 또는 <b>[휴대폰 연결 QR 보기]</b>를 눌러 QR코드를 띄웁니다</li>
+          <li><b>[암호화 켜기]</b> 또는 <b>[휴대폰 연결 QR 보기]</b>로 QR코드를 띄웁니다</li>
           <li>아래 <b>[QR코드 스캔]</b>으로 촬영하면 끝!</li>
         </ol>
 
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          style={{
-            width: "100%",
-            borderRadius: 12,
-            display: scanning ? "block" : "none",
-          }}
-        />
-        {!scanning && (
-          <button className="login-btn" type="button" onClick={() => void startScan()}>
-            QR코드 스캔
-          </button>
-        )}
+        <div className="qr-scan">
+          <div className={scanning ? "qr-viewport" : "qr-viewport hidden"}>
+            <video ref={videoRef} playsInline muted className="qr-video" />
+            <div className="qr-frame" aria-hidden="true">
+              <span className="qr-c tl" />
+              <span className="qr-c tr" />
+              <span className="qr-c bl" />
+              <span className="qr-c br" />
+            </div>
+          </div>
+          {scanning ? (
+            <>
+              <p className="qr-hint">PC 화면의 QR을 비춰 주세요</p>
+              <button className="pairing-connect secondary" type="button" onClick={cancelScan}>
+                취소
+              </button>
+            </>
+          ) : (
+            <button className="login-btn" type="button" onClick={() => void startScan()}>
+              QR코드 스캔
+            </button>
+          )}
+          {errorAt === "scan" && error && (
+            <p className="login-error" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
 
-        <label htmlFor="pairing-code" style={{ display: "block", marginTop: 16 }}>
+        <label htmlFor="pairing-code" className="pairing-code-label">
           연결 코드 (카메라를 쓸 수 없을 때)
         </label>
         <input
           id="pairing-code"
+          className="date-input"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="checkon.sync.v1:..."
           autoComplete="off"
           spellCheck={false}
-          style={{ width: "100%", marginTop: 4 }}
         />
         <button
-          className="login-btn"
+          className="pairing-connect secondary"
           type="button"
-          style={{ marginTop: 8 }}
+          disabled={!code.trim()}
           onClick={() => void accept(code)}
         >
           연결
         </button>
-
-        {error && (
+        {errorAt === "code" && error && (
           <p className="login-error" role="alert">
             {error}
           </p>
         )}
+
         <p className="login-note">
           연결 코드는 비밀번호와 같습니다. 다른 사람에게 보여 주거나 메신저로 전송하지
           마세요.

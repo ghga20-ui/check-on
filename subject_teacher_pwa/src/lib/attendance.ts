@@ -56,13 +56,13 @@ export function summarizeLesson(slot?: SlotAttendance): {
   absenceCount: number;
 } {
   if (!slot) {
-    return { checked: false, label: "미체크", absenceCount: 0 };
+    return { checked: false, label: "미확인", absenceCount: 0 };
   }
 
   const absenceCount = slot.absences.length;
   return {
     checked: true,
-    label: absenceCount ? `결과·출석인정 ${absenceCount}명` : "전원 출석",
+    label: absenceCount ? `결과·인정결과 ${absenceCount}명` : "전원 출석",
     absenceCount,
   };
 }

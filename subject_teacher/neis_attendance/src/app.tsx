@@ -433,7 +433,7 @@ function App() {
     root.style.setProperty("--accent", "#0A84FF");
     root.style.setProperty("--accent-hover", "#0071e3");
     root.style.setProperty("--accent-soft", "#0A84FF22");
-    root.style.setProperty("--radius-lg", "18px");
+    root.style.setProperty("--radius-l", "18px");
   }, [sidebarCollapsed]);
 
   const startRun = () => {
