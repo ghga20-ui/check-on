@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" role="img" aria-label="체크온 CheckOn">
   <rect x="8" y="16" width="64" height="64" rx="14" fill="#0A84FF"/>
-  <path d="M25.3 49.3 L35.5 58.9 L54.7 37.8" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(8 16) scale(0.125)">
+    <path d="M256 88 C170 88 138 158 138 244 V328 L100 384 H412 L374 328 V244 C374 158 342 88 256 88 Z" fill="#fff"/>
+    <path d="M204 244 L242 282 L314 198" fill="none" stroke="#0A84FF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="256" cy="428" r="26" fill="#fff"/>
+  </g>
   <text x="92" y="59" font-family="Pretendard, 'Apple SD Gothic Neo', system-ui, sans-serif" font-size="42" font-weight="700" fill="#1C1C1E">체크온</text>
   <circle cx="232" cy="30" r="6" fill="#30D158"/>
   <text x="93" y="83" font-family="Pretendard, system-ui, sans-serif" font-size="15" font-weight="600" letter-spacing="2" fill="#8E8E93">CheckOn</text>

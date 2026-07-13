@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="체크온">
   <rect width="512" height="512" rx="112" fill="#0A84FF"/>
-  <path d="M138 266 L220 343 L374 174" fill="none" stroke="#fff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M256 88 C170 88 138 158 138 244 V328 L100 384 H412 L374 328 V244 C374 158 342 88 256 88 Z" fill="#fff"/>
+  <path d="M204 244 L242 282 L314 198" fill="none" stroke="#0A84FF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="428" r="26" fill="#fff"/>
 </svg>
