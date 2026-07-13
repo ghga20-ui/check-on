@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_submodules
+
 
 ROOT = Path(SPECPATH)
 
@@ -29,6 +31,12 @@ hiddenimports = [
     "webview.platforms.winforms",
     "win32timezone",
 ]
+
+# selenium 4.42+ resolves webdriver.Chrome via PEP 562 lazy imports
+# (importlib.import_module in selenium/webdriver/__init__.py), which
+# PyInstaller's static analysis cannot follow — without this the EXE dies
+# with "No module named 'selenium.webdriver.chrome.webdriver'".
+hiddenimports += collect_submodules("selenium.webdriver")
 
 a = Analysis(
     ["subject_teacher/main.py"],
